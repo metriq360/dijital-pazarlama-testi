@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, doc, setDoc, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import ReactMarkdown from 'react-markdown'; // react-markdown kütüphanesi eklendi
 
 // Firebase ve Uygulama ID'si için global değişkenler (Canvas tarafından sağlanır)
 // Yerel geliştirme ortamında bu değişkenler tanımsız olacağından, varsayılan/dummy değerler atanmıştır.
@@ -61,7 +62,7 @@ const allQuestions = [
 
   // Bölüm 4: İçerik Pazarlaması
   { id: 'q4_1', section: 4, text: 'Web sitenizde blog içerikleri yayınlıyor musunuz?' },
-  { id: 'q4_2', section: 4, text: 'İçerikleriniz belirli bir stratejiye göre mi hazırlanıyor?' },
+  { id: 'q4_2', section: 4, text: 'İçerikleriniz belirli bir stratejiye göre mı hazırlanıyor?' },
   { id: 'q4_3', section: 4, text: 'İçeriklerinizin hedef kitlenizin sorunlarına çözüm sunduğunu düşünüyor musunuz?' },
   { id: 'q4_4', section: 4, text: 'Videolu içerikler üretiyor musunuz?' },
   { id: 'q4_5', section: 4, text: 'İçeriklerinizde anahtar kelime optimizasyonu yapıyor musunuz?' },
@@ -87,7 +88,7 @@ const allQuestions = [
 // Metriq360 Paket Bilgileri ve URL'ler
 const metriq360Info = {
   websiteUrl: 'https://www.metriq360.com', // Metriq360 web sitesi URL'si
-  contactEmail: 'info@metriq360.com', // Metriq360 iletişim e-posta adresi
+  contactEmail: 'bilgi@metriq360.com', // Metriq360 iletişim e-posta adresi güncellendi
   services: [
     "SEO Danışmanlığı", "İçerik Pazarlaması", "Sosyal Medya Yönetimi", "Meta & Google Reklam Yönetimi",
     "Yerel SEO ve Google My Business Optimizasyonu", "E-posta Pazarlaması", "Pazarlama Otomasyonu",
@@ -254,7 +255,7 @@ function App() {
         body: JSON.stringify({
           model: "gpt-3.5-turbo", // Kullanılacak OpenAI modeli
           messages: [{ role: "user", content: prompt }],
-          max_tokens: 100 // Kısa tavsiye için token sınırı
+          max_tokens: 50 // Kısa tavsiye için token sınırı (tek cümlelik)
         })
       });
 
@@ -281,32 +282,58 @@ function App() {
       const title = getSectionTitle(sectionNum);
       const current = sectionScores[sectionNum];
       const max = sectionMaxScores[sectionNum];
-      return `- ${title}: ${current}/${max}`;
+      return `- **${title}**: ${current}/${max}`; // Markdown bold eklendi
     }).join('\n');
 
     const questionsInSelectedSections = allQuestions.filter(q => selectedSections.includes(q.section));
-    const questionDetails = questionsInSelectedSections.map(q => {
-      const answerValue = quizAnswers[q.id] || 0;
-      return `${getSectionTitle(q.section)} - ${q.text}: ${answerValue}/5`;
+    const questionDetailsFormatted = questionsInSelectedSections.map(q => {
+        // Her soruyu "Soru Adı: Cevap/5" formatında listeleyin, AI'ın daha iyi anlaması için
+        const answerValue = quizAnswers[q.id] || 0;
+        return `- ${q.text} (Bölüm ${q.section}): ${answerValue}/5`;
     }).join('\n');
 
-    const prompt = `Dijital pazarlama sağlık testi sonuçlarına göre kapsamlı bir rapor, öneri ve strateji belgesi oluştur. Kullanıcı bilgileri: Ad: ${userInfo.name}, Soyad: ${userInfo.surname}, Sektör: ${userInfo.sector}, E-posta: ${userInfo.email}.
-    Testin tamamından alınan genel puan: ${overallScore} (maksimum ${overallMaxScore}).
-    Bölüm bazlı puanlar:
-    ${sectionScoresDetail}
 
-    Cevapları (1-5 arası, 1 en kötü, 5 en iyi):
-    ${questionDetails}
+    // KULLANICININ VERDİĞİ PROMPT BİREBİR KULLANILIYOR
+    const prompt = `Sen METRIQ360 AI Danışmanı olarak dijital pazarlama uzmanısın.
+Kullanıcının birden fazla bölümden oluşan Dijital Pazarlama Sağlık Testi cevaplarını alacaksın.
+Her bölümde 10 soru var, cevaplar 1-5 arasında (1 = en kötü, 5 = en iyi).
 
-    Raporu oluştururken, kullanıcının dijital pazarlama eksikliklerini ve potansiyelini hem genel hem de bölüm bazında göz önünde bulundur. Metriq360 olarak sunduğunuz hizmetlere (${metriq360Info.services.join(', ')}) ve paketlere (${metriq360Info.packages.map(p => `${p.name} (${p.slogan})`).join(', ')}) atıfta bulunarak, kullanıcının bu alanlarda nasıl destek alabileceğini belirt. Metriq360'ın IQ360 Sistemi ve Turuncu Güç konseptlerini rapora entegre et. Raporun sonunda, Metriq360 ile iletişime geçmeleri için güçlü bir çağrı ve web sitenize yönlendirme (URL: ${metriq360Info.websiteUrl}, E-posta: ${metriq360Info.contactEmail}) ekle.
+**Kullanıcı Bilgileri:**
+Ad: ${userInfo.name}
+Soyad: ${userInfo.surname}
+Sektör: ${userInfo.sector}
+E-posta: ${userInfo.email}
 
-    Rapor, şu başlıkları içermeli:
-    1.  **Mevcut Durum Analizi:** Kullanıcının genel ve bölüm bazındaki puanlarını değerlendirerek dijital pazarlama güçlü ve zayıf yönlerini analiz edin. Bu bölümde Metriq360'ın Analiz aşamasına vurgu yap.
-    2.  **Kişiselleştirilmiş Öneriler ve Metriq360 Çözümleri:** Her bir zayıf yön için (özellikle düşük puan alınan bölümler için) spesifik ve uygulanabilir dijital pazarlama önerileri sunun. Bu önerileri Metriq360'ın ilgili hizmetleri ve paketleriyle (örn. Sosyal Medya için IQ Sosyal Büyüme, Reklam için IQ Reklam Master, Yerel SEO için IQ Yerel Güç) ilişkilendirin ve nasıl destek sağlayabileceğinizi belirtin. Metriq360'ın Uygulama ve Optimizasyon aşamalarını vurgula.
-    3.  **Önerilen Strateji Taslağı:** Kısa ve uzun vadeli bir dijital pazarlama stratejisi taslağı çizin. Burada da Metriq360'ın Strateji belirleme ve Turuncu Güç (Orange Boost) yaklaşımına değinebilirsiniz.
-    4.  **Metriq360 ile İletişim ve Sonuç:** Genel bir değerlendirme, atılması gereken ilk adımlar ve Metriq360 ile iletişime geçmeleri için net bir çağrı ve iletişim bilgisi/web sitesi linki. Çağrı metni olarak "${metriq360Info.callToAction}" ifadesini kullan.
+**Test Sonuçları Özeti:**
+Genel Puan: ${overallScore} / ${overallMaxScore}
+${sectionScoresDetail ? `\n**Bölüm Bazlı Puanlar:**\n${sectionScoresDetail}` : ''}
 
-    Lütfen bu raporu Markdown formatında ve Türkçe olarak hazırlayın.`;
+**Detaylı Cevaplar (Her soru için 1=Hiç Yok/Çok Kötü, 5=Mükemmel/Çok İyi):**
+${questionDetailsFormatted}
+
+Yapman gerekenler:
+1. Kullanıcının her bölüm cevaplarını değerlendir. Zayıf ve güçlü yönleri net bir dille belirt.
+2. Bölüm bazında güçlü ve zayıf yönleri açık ve anlaşılır şekilde analiz et. Analizi Metriq360'ın "Analiz" aşamasıyla ilişkilendir.
+3. Kullanıcıyı motive eden, cesaret veren, geliştirmeye yönelik somut öneriler sun. Önerileri Metriq360'ın ilgili hizmetleriyle ve paketleriyle (IQ Yerel Güç, IQ Sosyal Büyüme, IQ Reklam Master, IQ Süper İkili, IQ Zirve Paketi) bağla. Metriq360'ın "Uygulama" ve "Optimizasyon" aşamalarını vurgula.
+4. Tüm bölümler tamamlandıktan sonra genel bir sağlık puanı değerlendirmesi ve kısa bir özet çıkar.
+5. Kullanıcının mevcut durumuna uygun METRIQ360 paketlerini öner, nedenlerini kısaca açıkla.
+6. Son olarak, kullanıcıyı profesyonel destek için bizimle iletişime geçmeye davet et. Metriq360'ın "Strateji" belirleme ve "Turuncu Güç (Orange Boost)" yaklaşımının bütünsel bir başarı için nasıl kritik olduğunu belirt.
+
+Ek olarak:
+- Dili sade, samimi ve profesyonel tut.
+- Teknik terimlerden kaçın.
+- Cevabı 500 kelimeyi geçmeyecek şekilde hazırla.
+- Raporu tamamen Markdown formatında hazırla.
+- Raporun sonunda yalnızca ve eksiksiz olarak aşağıdaki iletişim bilgilerini ekle:
+
+---
+**Sorularınız veya profesyonel destek için hemen bizimle iletişime geçin.**
+**Web:** ${metriq360Info.websiteUrl}
+**E-posta:** ${metriq360Info.contactEmail}
+**Telefon:** +90 537 948 48 68
+---
+`; // Prompt sonu
+
 
     try {
       // OpenAI API çağrısı
@@ -320,14 +347,14 @@ function App() {
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: "gpt-4o", // Daha detaylı rapor için güçlü bir model
+          model: "gpt-4o", // Daha detaylı ve kaliteli rapor için güçlü bir model
           messages: [{ role: "user", content: prompt }],
-          max_tokens: 1500 // Detaylı rapor için daha yüksek token sınırı
+          max_tokens: 800 // 500 kelimeyi geçmeyecek şekilde (yaklaşık 750-800 token)
         })
       });
 
       const result = await response.json();
-      let generatedReport = 'Rapor oluşturulamadı. Lütfen OpenAI API anahtarınızı ve bakiyenizi kontrol edin.';
+      let generatedReport = 'Rapor oluşturulamadı. Lütfen OpenAI API anahtarınızı, bakiyenizi ve doğru prompt formatını kontrol edin.';
       if (result.choices && result.choices.length > 0 && result.choices[0].message) {
         generatedReport = result.choices[0].message.content;
       } else {
@@ -422,7 +449,6 @@ function App() {
     );
   }
 
-  // Hata düzeltmesi: return ifadesinden sonra fazladan bir parantez (`)`) vardı.
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-100 flex flex-col items-center justify-center p-4 font-inter">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-2xl border-t-4 border-blue-500 transform transition-all duration-300 hover:scale-105">
@@ -623,8 +649,8 @@ function App() {
                   <p className="mt-4 text-gray-600">{reportData}</p>
                 </div>
               ) : (
-                <div className="text-left text-gray-700 prose max-w-none" dangerouslySetInnerHTML={{ __html: reportData.replace(/\n/g, '<br />') }}>
-                  {/* Markdown içeriğini HTML'e çevirme burada gerçekleşir. */}
+                <div className="text-left text-gray-700 prose max-w-none">
+                  <ReactMarkdown children={reportData} />
                 </div>
               )}
               {!reportLoading && !reportData && (
