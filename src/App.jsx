@@ -8,22 +8,23 @@ import { getFirestore, collection, addDoc, doc, setDoc, query, orderBy, limit, g
 // Yerel geliştirme ortamında bu değişkenler tanımsız olacağından, varsayılan/dummy değerler atanmıştır.
 // Canlı ortamda (Netlify, Firebase Hosting vb.) Canvas veya dağıtım platformu gerçek değerleri sağlayacaktır.
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyD2-CmmV5ZlOUNv6j850PUD1ozTteEQvw4",
-  authDomain: "dijital-pazarlama-testi.firebaseapp.com",
-  projectId: "dijital-pazarlama-testi",
-  storageBucket: "dijital-pazarlama-testi.firebasestorage.app",
-  messagingSenderId: "456871097042",
-  appId: "1:456871097042:web:1fe762699573a90286330b",
-  measurementId: "G-LQF9YDNTKK"
-};
+const firebaseConfig = typeof __firebase_config !== 'undefined'
+  ? JSON.parse(__firebase_config)
+  : {
+      apiKey: "AIzaSyC-dummy-local-api-key", // Bu bir yer tutucudur, gerçek Firebase API anahtarınız değildir.
+      authDomain: "your-project-id.firebaseapp.com", // Yerel test için dummy değer
+      projectId: "your-project-id", // Yerel test için dummy değer
+      storageBucket: "your-project-id.appspot.com",
+      messagingSenderId: "123456789012",
+      appId: "1:123456789012:web:abcdef1234567890abcdef",
+      measurementId: "G-XXXXXXXXXX" // Yerel test için dummy değer
+    };
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
 // Test soruları ve bölüm başlıkları güncellendi
 const allQuestions = [
   // Bölüm 1: Sosyal Medya Yönetimi
-  { id: 'q1_1', section: 1, text: 'Sosyal medya hesaplarınızda ne sıklıkta paylaşım yapıyorsunuz?' },
+  { id: 'q1_1', section: 1, text: 'Sosyal medya hesaplarınızda ne sıklıkla paylaşım yapıyorsunuz?' },
   { id: 'q1_2', section: 1, text: 'Her platform için ayrı bir strateji uyguluyor musunuz?' },
   { id: 'q1_3', section: 1, text: 'Takipçi sayınız son 6 ayda istikrarlı bir şekilde arttı mı?' },
   { id: 'q1_4', section: 1, text: 'Paylaşımlarınız etkileşim alıyor mu (beğeni, yorum, paylaşım)?' },
@@ -50,7 +51,7 @@ const allQuestions = [
   { id: 'q3_1', section: 3, text: 'Meta (Facebook/Instagram) reklamları yürütüyor musunuz?' },
   { id: 'q3_2', section: 3, text: 'Google Ads kampanyaları aktif mi?' },
   { id: 'q3_3', section: 3, text: 'Hedef kitle tanımlarınız net mi?' },
-  { id: 'q3_4', section: 3, text: 'Reklam kampanyalarınızı segmentlere ayırıyor musunuz?' },
+  { id: 'q3_4', section: 3, text: 'Reklam kampanyalarınıza segmentlere ayırıyor musunuz?' },
   { id: 'q3_5', section: 3, text: 'A/B testleri yapıyor musunuz?' },
   { id: 'q3_6', section: 3, text: 'Reklamlarda dönüşüm hedefi belirliyor musunuz?' },
   { id: 'q3_7', section: 3, text: 'Reklam bütçenizi veriye göre optimize ediyor musunuz?' },
@@ -60,7 +61,7 @@ const allQuestions = [
 
   // Bölüm 4: İçerik Pazarlaması
   { id: 'q4_1', section: 4, text: 'Web sitenizde blog içerikleri yayınlıyor musunuz?' },
-  { id: 'q4_2', section: 4, text: 'İçerikleriniz belirli bir stratejiye göre mı hazırlanıyor?' },
+  { id: 'q4_2', section: 4, text: 'İçerikleriniz belirli bir stratejiye göre mi hazırlanıyor?' },
   { id: 'q4_3', section: 4, text: 'İçeriklerinizin hedef kitlenizin sorunlarına çözüm sunduğunu düşünüyor musunuz?' },
   { id: 'q4_4', section: 4, text: 'Videolu içerikler üretiyor musunuz?' },
   { id: 'q4_5', section: 4, text: 'İçeriklerinizde anahtar kelime optimizasyonu yapıyor musunuz?' },
@@ -240,30 +241,33 @@ function App() {
     const prompt = `Dijital pazarlama testinde ${maxPossibleScore} üzerinden ${currentScore} puan alan bir kullanıcıya kısa ve faydalı bir tavsiye ver. Puanı göz önüne alarak, Metriq360'ın dijital pazarlama hizmetlerinden faydalanmanın önemini vurgula ve onlarla iletişime geçmeye teşvik et. Tavsiye tek cümlelik olsun. Özellikle Metriq360'ın IQ360 Sistemi ve Turuncu Güç konseptlerine veya ilgili paketlerine (IQ Sosyal Büyüme, IQ Reklam Master, IQ Yerel Güç) atıfta bulun.`;
 
     try {
-      let chatHistory = [];
-      chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-      const payload = { contents: chatHistory };
-      const apiKey = ""; // Canvas runtime tarafından sağlanacak
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      // OpenAI API çağrısı
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY; // Netlify ortam değişkeninden alacak
+      const apiUrl = 'https://api.openai.com/v1/chat/completions';
 
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo", // Kullanılacak OpenAI modeli
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 100 // Kısa tavsiye için token sınırı
+        })
       });
 
       const result = await response.json();
-      if (result.candidates && result.candidates.length > 0 &&
-          result.candidates[0].content && result.candidates[0].content.parts &&
-          result.candidates[0].content.parts.length > 0) {
-        const text = result.candidates[0].content.parts[0].text;
+      if (result.choices && result.choices.length > 0 && result.choices[0].message) {
+        const text = result.choices[0].message.content;
         setShortAdvice(text);
       } else {
-        setShortAdvice('Tavsiye alınamadı. Lütfen tekrar deneyin.');
-        console.error("Gemini API'den kısa tavsiye alınırken beklenmeyen yanıt:", result);
+        setShortAdvice('Tavsiye alınamadı. Lütfen OpenAI API anahtarınızı ve bakiyenizi kontrol edin.');
+        console.error("OpenAI API'den kısa tavsiye alınırken beklenmeyen yanıt:", result);
       }
     } catch (apiError) {
-      console.error("Gemini API kısa tavsiye hatası:", apiError);
+      console.error("OpenAI API kısa tavsiye hatası:", apiError);
       setShortAdvice('Tavsiye oluşturulurken bir hata oluştu.');
     }
   };
@@ -286,7 +290,7 @@ function App() {
       return `${getSectionTitle(q.section)} - ${q.text}: ${answerValue}/5`;
     }).join('\n');
 
-    const prompt = `Dijital pazarlama sağlık testi sonuçlarına göre kapsamlı bir rapor, öneri ve strateji belgesi oluştur. Kullanucu bilgileri: Ad: ${userInfo.name}, Soyad: ${userInfo.surname}, Sektör: ${userInfo.sector}, E-posta: ${userInfo.email}.
+    const prompt = `Dijital pazarlama sağlık testi sonuçlarına göre kapsamlı bir rapor, öneri ve strateji belgesi oluştur. Kullanıcı bilgileri: Ad: ${userInfo.name}, Soyad: ${userInfo.surname}, Sektör: ${userInfo.sector}, E-posta: ${userInfo.email}.
     Testin tamamından alınan genel puan: ${overallScore} (maksimum ${overallMaxScore}).
     Bölüm bazlı puanlar:
     ${sectionScoresDetail}
@@ -305,27 +309,29 @@ function App() {
     Lütfen bu raporu Markdown formatında ve Türkçe olarak hazırlayın.`;
 
     try {
-      let chatHistory = [];
-      chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-      const payload = { contents: chatHistory };
-      const apiKey = ""; // Canvas runtime tarafından sağlanacak
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      // OpenAI API çağrısı
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY; // Netlify ortam değişkeninden alacak
+      const apiUrl = 'https://api.openai.com/v1/chat/completions';
 
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: "gpt-4o", // Daha detaylı rapor için güçlü bir model
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 1500 // Detaylı rapor için daha yüksek token sınırı
+        })
       });
 
       const result = await response.json();
-      let generatedReport = 'Rapor oluşturulamadı.';
-      if (result.candidates && result.candidates.length > 0 &&
-          result.candidates[0].content && result.candidates[0].content.parts &&
-          result.candidates[0].content.parts.length > 0) {
-        const text = result.candidates[0].content.parts[0].text;
-        setReportData(text);
+      let generatedReport = 'Rapor oluşturulamadı. Lütfen OpenAI API anahtarınızı ve bakiyenizi kontrol edin.';
+      if (result.choices && result.choices.length > 0 && result.choices[0].message) {
+        generatedReport = result.choices[0].message.content;
       } else {
-        console.error("Gemini API'den detaylı rapor alınırken beklenmeyen yanıt:", result);
+        console.error("OpenAI API'den detaylı rapor alınırken beklenmeyen yanıt:", result);
       }
       setReportData(generatedReport);
 
@@ -390,7 +396,7 @@ function App() {
       // });
 
     } catch (apiError) {
-      console.error("Gemini API detailed report error:", apiError);
+      console.error("OpenAI API detaylı rapor hatası:", apiError);
       setReportData('Detaylı rapor oluşturulurken bir hata oluştu.');
     } finally {
       setReportLoading(false);
