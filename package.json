@@ -7,17 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
-  {
+  },
   "dependencies": {
     "firebase": "^10.7.1",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-    // "react-markdown": "^8.0.0" satırı SİLİNDİ
+    "react-dom": "^18.2.0",
+    "react-markdown": "^8.0.0"
   },
-  "devDependencies": {
-    // ...
-  }
-}
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.3",
     "vite": "^5.0.0",
