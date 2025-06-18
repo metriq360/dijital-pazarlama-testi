@@ -280,7 +280,7 @@ function App() {
                 body: JSON.stringify({
                     model: "gpt-3.5-turbo",
                     messages: [{ role: "user", content: prompt }],
-                    max_tokens: 100
+                    max_tokens: 150
                 })
             });
 
@@ -312,7 +312,37 @@ function App() {
         const strongPointsText = strongSections.length > 0 ? strongSections.join(', ') : 'Belirgin bir güçlü yön tespit edilemedi.';
         const weakPointsText = weakSections.length > 0 ? weakSections.join(', ') : 'Belirgin bir zayıf yön tespit edilemedi.';
 
-        const prompt = `Sen bir dijital pazarlama uzmanısın, METRIQ360 için özelleşmiş raporlar hazırlıyorsun...\n\nKullanıcı:\nAd: ${userInfo.name} ${userInfo.surname}\nSektör: ${userInfo.sector}\nGenel Puan: ${overallScore} / ${overallMaxScore}\nGüçlü Yönler: ${strongPointsText}\nZayıf Yönler: ${weakPointsText}\n\n--- \nİletişim:\n🌐 ${metriq360Info.websiteUrl}\n✉️ ${metriq360Info.contactEmail}\n📞 +90 537 948 48 68\n---`;
+        // YENİ VE GÜNCELLENMİŞ PROMPT
+        const prompt = `Sen bir dijital pazarlama uzmanısın, METRIQ360 için özelleşmiş raporlar hazırlıyorsun.
+
+Aşağıdaki kullanıcı bilgileri ve Dijital Pazarlama Sağlık Testi sonuçlarına göre;
+
+1. Kısa, öz, samimi ama profesyonel bir rapor yaz.
+2. Güçlü ve zayıf yönleri net şekilde vurgula.
+3. Gelişim için pratik, aksiyon odaklı öneriler ver.
+4. En uygun METRIQ360 paketlerini öner (Yerel Güç, Sosyal Büyüme, Reklam Master, Süper İkili, Zirve Paketi).
+5. IQ360 Sistemi ve “Turuncu Güç (Orange Boost)” yaklaşımına kısaca atıfta bulun.
+6. Raporu emojilerle canlandır, ama aşırıya kaçma.
+7. Teknik detay, tablo, ham skor veya karmaşık ifadeler verme.
+8. Son olarak iletişim bilgilerini ekle.
+
+---
+
+Kullanıcı:
+
+Ad: ${userInfo.name} ${userInfo.surname}
+Sektör: ${userInfo.sector}
+Genel Puan: ${overallScore} / ${overallMaxScore}
+Güçlü Yönler: ${strongPointsText}
+Zayıf Yönler: ${weakPointsText}
+
+---
+
+İletişim:
+🌐 www.metriq360.com
+✉️ bilgi@metriq360.com
+📞 +90 537 948 48 68`;
+
 
         let generatedReport = 'Rapor oluşturulamadı. Lütfen API anahtarınızı ve yapılandırmanızı kontrol edin.';
 
@@ -326,7 +356,7 @@ function App() {
                 body: JSON.stringify({
                     model: "gpt-4o",
                     messages: [{ role: "user", content: prompt }],
-                    max_tokens: 1000
+                    max_tokens: 1200
                 })
             });
             const result = await response.json();
@@ -360,7 +390,7 @@ function App() {
             console.log("Veriler Firestore'a kaydedildi.");
         }
 
-        // SendGrid ile e-posta gönder (Netlify Function üzerinden) - HATA AYIKLAMA GÜNCELLEMESİ
+        // SendGrid ile e-posta gönder (Netlify Function üzerinden)
         try {
             const response = await fetch('/.netlify/functions/send-email', {
                 method: 'POST',
