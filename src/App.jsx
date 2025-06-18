@@ -83,25 +83,6 @@ const allQuestions = [
     { id: 'q5_10', section: 5, text: 'Dijital pazarlama süreçlerinin tümünü bir sistem dahilinde takip ediyor musunuz?' },
 ];
 
-// Metriq360 Paket Bilgileri ve URL'ler
-const metriq360Info = {
-    websiteUrl: 'https://www.metriq360.com',
-    contactEmail: 'bilgi@metriq360.com', // Admin e-postası
-    services: [
-        "SEO Danışmanlığı", "İçerik Pazarlaması", "Sosyal Medya Yönetimi", "Meta & Google Reklam Yönetimi",
-        "Yerel SEO ve Google My Business Optimizasyonu", "E-posta Pazarlaması", "Pazarlama Otomasyonu",
-        "Veri Analizi ve Raporlama", "Stratejik Planlama ve Yönetim"
-    ],
-    packages: [
-        { name: "IQ Yerel Güç", slogan: "Mahallenize Ulaşın, Hedef Kitlenizi Büyüyün!", focus: "Yerel SEO & Google My Business Odaklı" },
-        { name: "IQ Sosyal Büyüme", slogan: "Markanızı Sosyalde Konuşturun, Bağ Kurun!", focus: "Meta (Facebook/Instagram) & LinkedIn Odaklı" },
-        { name: "IQ Reklam Master", slogan: "Doğru Reklam, Doğru Hedef, En Hızlı Dönüşüm!", focus: "Meta & Google Reklam Yönetimi" },
-        { name: "IQ Süper İkili", slogan: "İki Gücü Bir Araya Getirin, Stratejik Büyümeyi Başlatın!", focus: "İki Paket Bir Arada - Esnek Seçimli" },
-        { name: "IQ Zirve Paketi", slogan: "Tam Dijital Hâkimiyet, Marka Zirvesine Giden Yol!", focus: "Tüm Hizmetler Bir Arada - Full Digital Strateji" }
-    ],
-    callToAction: "Dijital dünyada fark yaratmak ve başarınızı garantilemek için hemen bizimle iletişime geçin. IQ360 sistemiyle geleceğinizi birlikte inşa edelim!"
-};
-
 // YENİ VE BASİT WHATSAPP BUTONU BİLEŞENİ
 function WhatsAppButton() {
     const whatsappUrl = "https://wa.me/905379484868?text=Merhaba!%20Bilgi%20almak%20istiyorum.";
@@ -138,7 +119,7 @@ function App() {
     const [auth, setAuth] = useState(null);
     const [userId, setUserId] = useState(null);
     const [user, setUser] = useState({ name: '', surname: '', sector: '', email: '' });
-    const [currentStep, setCurrentStep] = useState('form'); // 'form', 'quiz-select', 'quiz', 'results'
+    const [currentStep, setCurrentStep] = useState('form');
     const [selectedSections, setSelectedSections] = useState([]);
     const [answers, setAnswers] = useState({});
     const [overallScore, setOverallScore] = useState(0);
@@ -151,16 +132,13 @@ function App() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    // Firebase Başlatma ve Kimlik Doğrulama
     useEffect(() => {
         try {
             const app = initializeApp(firebaseConfig);
             const authInstance = getAuth(app);
             const dbInstance = getFirestore(app);
-
             setAuth(authInstance);
             setDb(dbInstance);
-
             onAuthStateChanged(authInstance, async (firebaseUser) => {
                 if (firebaseUser) {
                     setUserId(firebaseUser.uid);
@@ -173,7 +151,7 @@ function App() {
                         }
                     } catch (e) {
                         console.error("Firebase authentication error:", e);
-                        setError("Kimlik doğrulama başarısız oldu. Lütfen tekrar deneyin.");
+                        setError("Kimlik doğrulama başarısız oldu.");
                     }
                 }
                 setLoading(false);
@@ -196,13 +174,7 @@ function App() {
     };
 
     const handleSectionToggle = (sectionNum) => {
-        setSelectedSections(prevSelectedSections => {
-            if (prevSelectedSections.includes(sectionNum)) {
-                return prevSelectedSections.filter(section => section !== sectionNum);
-            } else {
-                return [...prevSelectedSections, sectionNum].sort((a, b) => a - b);
-            }
-        });
+        setSelectedSections(prev => prev.includes(sectionNum) ? prev.filter(s => s !== sectionNum) : [...prev, sectionNum].sort());
     };
 
     const startQuiz = () => {
@@ -220,221 +192,99 @@ function App() {
     };
 
     const handleAnswerChange = (questionId, value) => {
-        setAnswers(prevAnswers => ({
-            ...prevAnswers,
-            [questionId]: parseInt(value)
-        }));
+        setAnswers(prev => ({ ...prev, [questionId]: parseInt(value) }));
     };
     
-    // Puanları hem genel hem de bölüm bazında hesaplayan fonksiyon
     const calculateScore = () => {
-        let totalScore = 0;
-        let totalMaxScore = 0;
-        const currentSectionScores = {};
-        const currentSectionMaxScores = {};
-
+        let totalScore = 0, totalMaxScore = 0;
+        const currentSectionScores = {}, currentSectionMaxScores = {};
         selectedSections.forEach(sectionNum => {
             let sectionCurrentScore = 0;
             const questionsForSection = allQuestions.filter(q => q.section === sectionNum);
             const sectionMaximumScore = questionsForSection.length * 5;
-
             questionsForSection.forEach(q => {
                 sectionCurrentScore += answers[q.id] || 0;
             });
-
             currentSectionScores[sectionNum] = sectionCurrentScore;
             currentSectionMaxScores[sectionNum] = sectionMaximumScore;
             totalScore += sectionCurrentScore;
             totalMaxScore += sectionMaximumScore;
         });
-
         return { totalScore, totalMaxScore, sectionScores: currentSectionScores, sectionMaxScores: currentSectionMaxScores };
     };
 
     const getSectionTitle = (sectionNum) => {
-        switch (sectionNum) {
-            case 1: return 'Sosyal Medya Yönetimi';
-            case 2: return 'Yerel SEO ve Google Benim İşletmem';
-            case 3: return 'Reklam ve Kampanya Yönetimi';
-            case 4: return 'İçerik Pazarlaması';
-            case 5: return 'Pazarlama Araçları ve Otomasyon';
-            default: return '';
-        }
+        const titles = {
+            1: 'Sosyal Medya Yönetimi', 2: 'Yerel SEO ve Google Benim İşletmem',
+            3: 'Reklam ve Kampanya Yönetimi', 4: 'İçerik Pazarlaması', 5: 'Pazarlama Araçları ve Otomasyon'
+        };
+        return titles[sectionNum] || '';
     };
 
-    // OpenAI API ile kısa tavsiye üreten fonksiyon
-    const generateShortAdvice = async (currentScore, maxPossibleScore) => {
-        setShortAdvice('Tavsiye oluşturuluyor...');
-        const prompt = `Dijital pazarlama testinde ${maxPossibleScore} üzerinden ${currentScore} puan alan bir kullanıcıya kısa ve faydalı bir tavsiye ver. Puanı göz önüne alarak, Metriq360'ın dijital pazarlama hizmetlerinden faydalanmanın önemini vurgula ve onlarla iletişime geçmeye teşvik et. Tavsiye tek cümlelik olsun. Özellikle Metriq360'ın IQ360 Sistemi ve Turuncu Güç konseptlerine veya ilgili paketlerine (IQ Sosyal Büyüme, IQ Reklam Master, IQ Yerel Güç) atıfta bulun.`;
-
-        try {
-            const apiKey = import.meta.env.VITE_OPENAI_API_KEY; // Netlify ortam değişkeninden al
-            const apiUrl = 'https://api.openai.com/v1/chat/completions';
-
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: "gpt-3.5-turbo",
-                    messages: [{ role: "user", content: prompt }],
-                    max_tokens: 150
-                })
-            });
-
-            const result = await response.json();
-            if (result.choices && result.choices.length > 0 && result.choices[0].message) {
-                const text = result.choices[0].message.content;
-                setShortAdvice(text);
-            } else {
-                setShortAdvice('Tavsiye alınamadı. Lütfen API anahtarınızı ve yapılandırmanızı kontrol edin.');
-                console.error("OpenAI API'den beklenmeyen yanıt:", result);
-            }
-        } catch (apiError) {
-            console.error("OpenAI API hatası:", apiError);
-            setShortAdvice('Tavsiye oluşturulurken bir hata oluştu.');
-        }
-    };
-
-    // OpenAI API ile rapor üreten ve e-posta gönderen fonksiyon
-    const generateDetailedReportAndSendEmails = async (overallScore, overallMaxScore, sectionScores, sectionMaxScores, quizAnswers, userInfo) => {
+    // BİRLEŞTİRİLMİŞ İSTEK FONKSİYONU
+    const processQuizResults = async (scores, quizAnswers, userInfo) => {
         setReportLoading(true);
-        setReportData('Detaylı rapor oluşturuluyor...');
-
-        const strongSections = [], weakSections = [];
-        selectedSections.forEach(sectionNum => {
-            const percentage = (sectionScores[sectionNum] / sectionMaxScores[sectionNum]) * 100;
-            if (percentage >= 70) strongSections.push(getSectionTitle(sectionNum));
-            else if (percentage <= 40) weakSections.push(getSectionTitle(sectionNum));
-        });
-        const strongPointsText = strongSections.length > 0 ? strongSections.join(', ') : 'Belirgin bir güçlü yön tespit edilemedi.';
-        const weakPointsText = weakSections.length > 0 ? weakSections.join(', ') : 'Belirgin bir zayıf yön tespit edilemedi.';
-
-        // YENİ VE GÜNCELLENMİŞ PROMPT
-        const prompt = `Sen bir dijital pazarlama uzmanısın, METRIQ360 için özelleşmiş raporlar hazırlıyorsun.
-
-Aşağıdaki kullanıcı bilgileri ve Dijital Pazarlama Sağlık Testi sonuçlarına göre;
-
-1. Kısa, öz, samimi ama profesyonel bir rapor yaz.
-2. Güçlü ve zayıf yönleri net şekilde vurgula.
-3. Gelişim için pratik, aksiyon odaklı öneriler ver.
-4. En uygun METRIQ360 paketlerini öner (Yerel Güç, Sosyal Büyüme, Reklam Master, Süper İkili, Zirve Paketi).
-5. IQ360 Sistemi ve “Turuncu Güç (Orange Boost)” yaklaşımına kısaca atıfta bulun.
-6. Raporu emojilerle canlandır, ama aşırıya kaçma.
-7. Teknik detay, tablo, ham skor veya karmaşık ifadeler verme.
-8. Son olarak iletişim bilgilerini ekle.
-
----
-
-Kullanıcı:
-
-Ad: ${userInfo.name} ${userInfo.surname}
-Sektör: ${userInfo.sector}
-Genel Puan: ${overallScore} / ${overallMaxScore}
-Güçlü Yönler: ${strongPointsText}
-Zayıf Yönler: ${weakPointsText}
-
----
-
-İletişim:
-🌐 www.metriq360.com
-✉️ bilgi@metriq360.com
-📞 +90 537 948 48 68`;
-
-
-        let generatedReport = 'Rapor oluşturulamadı. Lütfen API anahtarınızı ve yapılandırmanızı kontrol edin.';
-
-        try {
-            // OpenAI ile raporu oluştur
-            const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-            const apiUrl = 'https://api.openai.com/v1/chat/completions';
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                body: JSON.stringify({
-                    model: "gpt-4o",
-                    messages: [{ role: "user", content: prompt }],
-                    max_tokens: 1200
-                })
-            });
-            const result = await response.json();
-            if (result.choices && result.choices.length > 0) {
-                generatedReport = result.choices[0].message.content;
-            } else {
-                console.error("OpenAI API'den beklenmeyen yanıt:", result);
-            }
-        } catch (apiError) {
-            console.error("OpenAI API rapor hatası:", apiError);
-        }
+        setShortAdvice('');
+        setReportData('Rapor ve tavsiyeler oluşturuluyor...');
         
-        setReportData(generatedReport);
-        setReportLoading(false); // Rapor göründükten sonra loading'i kapat
-
-        // Firestore'a kaydet
-        if (db && userId) {
-            const dataToSave = {
-                userId, timestamp: new Date(), userInfo: user, selectedSections, answers,
-                overallScore, overallMaxScore, sectionScores, sectionMaxScores,
-                shortAdvice: shortAdvice, detailedReport: generatedReport
-            };
-            await addDoc(collection(db, `artifacts/${appId}/users/${userId}/quizzes`), dataToSave);
-            // Public data
-            const publicData = {
-                userId, timestamp: new Date(), userInfo: { name: userInfo.name, sector: userInfo.sector },
-                selectedSections, overallScore, overallMaxScore,
-                detailedReportSnippet: generatedReport.substring(0, 500) + '...'
-            };
-            await addDoc(collection(db, `artifacts/${appId}/public/data/quizzes`), publicData);
-            console.log("Veriler Firestore'a kaydedildi.");
-        }
-
-        // SendGrid ile e-posta gönder (Netlify Function üzerinden)
         try {
+            // Arka plan fonksiyonuna istek gönder
             const response = await fetch('/.netlify/functions/send-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userEmail: userInfo.email,
-                    userName: `${userInfo.name} ${userInfo.surname}`,
-                    adminEmail: metriq360Info.contactEmail,
-                    reportContent: generatedReport,
-                    userInfoForAdmin: { ...userInfo, overallScore, overallMaxScore }
+                    scores,
+                    quizAnswers,
+                    userInfo,
+                    allQuestions // Arka planın sorulara erişebilmesi için gönder
                 })
             });
 
-            if (!response.ok) {
-                const errorBody = await response.text();
-                console.error(`Netlify fonksiyonu hata döndürdü: ${response.status} ${response.statusText}`, errorBody);
-                throw new Error('E-posta sunucusu bir hata ile karşılaştı.');
+            const contentType = response.headers.get("content-type");
+            if (!response.ok || !contentType || !contentType.includes("application/json")) {
+                const errorText = await response.text();
+                console.error("Netlify fonksiyonundan beklenmedik yanıt:", errorText);
+                throw new Error("Rapor oluşturulurken bir sunucu hatası oluştu. Lütfen Netlify loglarını kontrol edin.");
             }
 
             const result = await response.json();
-            console.log("Netlify fonksiyonundan gelen başarılı yanıt:", result.message);
+            
+            setShortAdvice(result.shortAdvice);
+            setReportData(result.detailedReport);
 
-        } catch (emailError) {
-            console.error("E-posta gönderme fonksiyonuna istek gönderilirken bir hata oluştu:", emailError);
+            // Firestore'a kaydetme
+            if (db && userId) {
+                const dataToSave = {
+                    userId, timestamp: new Date(), userInfo, selectedSections, answers,
+                    ...scores,
+                    shortAdvice: result.shortAdvice,
+                    detailedReport: result.detailedReport
+                };
+                await addDoc(collection(db, `artifacts/${appId}/users/${userId}/quizzes`), dataToSave);
+            }
+
+        } catch (err) {
+            console.error("Rapor işleme hatası:", err);
+            setError(err.message);
+            setReportData(''); 
+        } finally {
+            setReportLoading(false);
         }
     };
-
+    
     const handleSubmitQuiz = async () => {
-        const { totalScore, totalMaxScore, sectionScores, sectionMaxScores } = calculateScore();
-        setOverallScore(totalScore);
-        setOverallMaxScore(totalMaxScore);
-        setSectionScores(sectionScores);
-        setSectionMaxScores(sectionMaxScores);
+        const scores = calculateScore();
+        setOverallScore(scores.totalScore);
+        setOverallMaxScore(scores.totalMaxScore);
+        setSectionScores(scores.sectionScores);
+        setSectionMaxScores(scores.sectionMaxScores);
         setCurrentStep('results');
-        await generateShortAdvice(totalScore, totalMaxScore);
-        await generateDetailedReportAndSendEmails(totalScore, totalMaxScore, sectionScores, sectionMaxScores, answers, user);
+        
+        await processQuizResults(scores, answers, user);
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
-                <div className="text-center text-lg font-semibold text-gray-700">Yükleniyor...</div>
-            </div>
-        );
+        return <div className="flex items-center justify-center min-h-screen">Yükleniyor...</div>;
     }
 
     return (
@@ -472,7 +322,7 @@ Zayıf Yönler: ${weakPointsText}
                                     id="name"
                                     value={user.name}
                                     onChange={(e) => setUser({ ...user, name: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                     placeholder="Adınızı girin"
                                     required
                                 />
@@ -484,7 +334,7 @@ Zayıf Yönler: ${weakPointsText}
                                     id="surname"
                                     value={user.surname}
                                     onChange={(e) => setUser({ ...user, surname: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                     placeholder="Soyadınızı girin"
                                     required
                                 />
@@ -496,7 +346,7 @@ Zayıf Yönler: ${weakPointsText}
                                     id="sector"
                                     value={user.sector}
                                     onChange={(e) => setUser({ ...user, sector: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                     placeholder="Ör: E-ticaret, Hizmet, Üretim"
                                     required
                                 />
@@ -508,7 +358,7 @@ Zayıf Yönler: ${weakPointsText}
                                     id="email"
                                     value={user.email}
                                     onChange={(e) => setUser({ ...user, email: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                     placeholder="ornek@eposta.com"
                                     required
                                 />
@@ -518,7 +368,7 @@ Zayıf Yönler: ${weakPointsText}
                             </p>
                             <button
                                 type="submit"
-                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
                             >
                                 Teste Başla
                             </button>
@@ -531,7 +381,7 @@ Zayıf Yönler: ${weakPointsText}
                         <h2 className="text-2xl font-semibold text-gray-800 text-center mb-4">Lütfen çözmek istediğiniz test bölümlerini seçin:</h2>
                         {error && <p className="text-red-500 text-center mb-4">{error}</p>}
                         {[1, 2, 3, 4, 5].map(sectionNum => (
-                            <label key={sectionNum} className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg shadow-sm cursor-pointer hover:bg-gray-100 transition duration-150 ease-in-out">
+                            <label key={sectionNum} className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg shadow-sm cursor-pointer hover:bg-gray-100">
                                 <input
                                     type="checkbox"
                                     checked={selectedSections.includes(sectionNum)}
@@ -545,13 +395,13 @@ Zayıf Yönler: ${weakPointsText}
                         ))}
                         <button
                             onClick={startQuiz}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mt-6"
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
                         >
                             Seçilen Bölümlerle Teste Başla
                         </button>
                         <button
                                 onClick={() => { setCurrentStep('form'); setSelectedSections([]); setError(''); }}
-                                className="w-full bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 mt-2"
+                                className="w-full bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
                         >
                                 Geri Dön
                         </button>
@@ -582,7 +432,7 @@ Zayıf Yönler: ${weakPointsText}
                                                             value={value}
                                                             checked={answers[q.id] === value}
                                                             onChange={() => handleAnswerChange(q.id, value)}
-                                                            className="form-radio h-5 w-5 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                                            className="form-radio h-5 w-5 text-blue-600 border-gray-300"
                                                             required
                                                         />
                                                         <span className="mt-1 text-sm">{value}</span>
@@ -600,7 +450,7 @@ Zayıf Yönler: ${weakPointsText}
                         <div className="flex justify-between mt-8">
                             <button
                                 onClick={() => setCurrentStep('quiz-select')}
-                                className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300"
+                                className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
                             >
                                 Bölüm Seçimine Dön
                             </button>
@@ -609,7 +459,7 @@ Zayıf Yönler: ${weakPointsText}
                                 disabled={
                                     allQuestions.filter(q => selectedSections.includes(q.section)).some(q => answers[q.id] === 0 || !answers[q.id])
                                 }
-                                className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Testi Bitir ve Sonuçları Gör
                             </button>
@@ -640,7 +490,7 @@ Zayıf Yönler: ${weakPointsText}
                         
                         <div className="bg-blue-50 p-6 rounded-xl shadow-inner border border-blue-200">
                             <h3 className="text-xl font-semibold text-blue-800 mb-3">Kısa Tavsiye</h3>
-                            <p className="text-gray-700">{shortAdvice}</p>
+                            <p className="text-gray-700">{reportLoading ? 'Oluşturuluyor...' : shortAdvice}</p>
                         </div>
 
                         <div className="bg-purple-50 p-6 rounded-xl shadow-inner border border-purple-200 mt-6">
@@ -648,15 +498,12 @@ Zayıf Yönler: ${weakPointsText}
                             {reportLoading ? (
                                 <div className="flex flex-col items-center justify-center">
                                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
-                                    <p className="mt-4 text-gray-600">{reportData || 'Rapor oluşturuluyor...'}</p>
+                                    <p className="mt-4 text-gray-600">{reportData}</p>
                                 </div>
                             ) : (
                                 <div className="text-left text-gray-700 prose max-w-none">
                                     <ReactMarkdown children={reportData} />
                                 </div>
-                            )}
-                            {!reportLoading && !reportData && (
-                               <p className="text-red-500">Rapor oluşturulamadı veya yüklenemedi. Lütfen tekrar deneyin.</p>
                             )}
                         </div>
 
@@ -665,7 +512,6 @@ Zayıf Yönler: ${weakPointsText}
                             <p>Kısa süre içinde test sonuçlarını ve özel tavsiyelerini içeren dijital raporun, e-posta adresine ({user.email}) gönderilecek. Gelen kutunu kontrol etmeyi unutma!</p>
                         </div>
                         
-                        {/* BASİTLEŞTİRİLMİŞ İLETİŞİM BÖLÜMÜ */}
                         <WhatsAppButton />
 
                         <button
@@ -682,7 +528,7 @@ Zayıf Yönler: ${weakPointsText}
                                 setUser({ name: '', surname: '', sector: '', email: '' });
                                 setError('');
                             }}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mt-6"
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
                         >
                             Yeni Bir Test Yap
                         </button>
