@@ -255,7 +255,7 @@ function App() {
         body: JSON.stringify({
           model: "gpt-3.5-turbo", // Kullanılacak OpenAI modeli
           messages: [{ role: "user", content: prompt }],
-          max_tokens: 50 // Kısa tavsiye için token sınırı (tek cümlelik)
+          max_tokens: 100 // Kısa tavsiye için token sınırı
         })
       });
 
@@ -349,7 +349,7 @@ Ek olarak:
         body: JSON.stringify({
           model: "gpt-4o", // Daha detaylı ve kaliteli rapor için güçlü bir model
           messages: [{ role: "user", content: prompt }],
-          max_tokens: 800 // 500 kelimeyi geçmeyecek şekilde (yaklaşık 750-800 token)
+          max_tokens: 1200 // 500 kelimeyi geçmeyecek şekilde (yaklaşık 750-800 token) + güvenlik payı
         })
       });
 
@@ -451,7 +451,7 @@ Ek olarak:
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-100 flex flex-col items-center justify-center p-4 font-inter">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-2xl border-t-4 border-blue-500 transform transition-all duration-300 hover:scale-105">
+      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-2xl border-t-4 border-blue-500"> {/* Removed hover animation */}
         <h1 className="text-4xl font-extrabold text-center text-blue-800 mb-6 tracking-tight">
           Dijital Pazarlama Sağlık Testi
         </h1>
