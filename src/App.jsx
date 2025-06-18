@@ -102,83 +102,36 @@ const metriq360Info = {
     callToAction: "Dijital dünyada fark yaratmak ve başarınızı garantilemek için hemen bizimle iletişime geçin. IQ360 sistemiyle geleceğinizi birlikte inşa edelim!"
 };
 
-// GÜNCELLENMİŞ İLETİŞİM FORMU BİLEŞENİ
-function FeedbackForm({ userInfo, overallScore, overallMaxScore }) {
-    const [feedback, setFeedback] = useState('');
-    const [isSubmitted, setIsSubmitted] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState(null);
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        setError(null);
-
-        const formData = new FormData();
-        formData.append('message', feedback);
-        // Geri bildirime bağlam eklemek için gizli alanlar
-        formData.append('name', `${userInfo.name} ${userInfo.surname}` || 'Bilinmiyor');
-        formData.append('email', userInfo.email || 'Bilinmiyor');
-        formData.append('sector', userInfo.sector || 'Bilinmiyor');
-        formData.append('score', `${overallScore}/${overallMaxScore}`);
-
-
-        try {
-            // ÖNEMLİ: 'YOUR_FORM_ID' kısmını kendi Formspree form ID'niz ile değiştirin!
-            // Formspree.io adresinden ücretsiz bir hesap oluşturup yeni bir form yaratabilirsiniz.
-            const response = await fetch('https://formspree.io/f/YOUR_FORM_ID', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'Accept': 'application/json'
-                }
-            });
-
-            if (response.ok) {
-                setIsSubmitted(true);
-            } else {
-                throw new Error('Mesaj gönderilirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
-            }
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    if (isSubmitted) {
-        return (
-            <div className="text-center text-green-700 font-semibold p-4 bg-green-100 border border-green-200 rounded-lg">
-                <p>Mesajınız için teşekkürler! Bize ulaştı. 🚀</p>
-            </div>
-        );
-    }
+// YENİ VE BASİT WHATSAPP BUTONU BİLEŞENİ
+function WhatsAppButton() {
+    const whatsappUrl = "https://wa.me/905379484868?text=Merhaba!%20Bilgi%20almak%20istiyorum.";
 
     return (
-        <div className="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200 mt-8">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4 text-center">Bizimle İletişime Geçin</h3>
-            <form onSubmit={handleSubmit}>
-                <textarea
-                    name="feedback"
-                    value={feedback}
-                    onChange={(e) => setFeedback(e.target.value)}
-                    placeholder="Test sonuçlarınız, dijital pazarlama ihtiyaçlarınız veya herhangi bir konuda bize mesaj gönderin..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out min-h-[100px]"
-                    required
-                />
-                <button
-                    type="submit"
-                    disabled={feedback.trim() === '' || isSubmitting}
-                    className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        <div className="bg-green-50 p-6 rounded-xl shadow-inner border border-green-200 mt-8 text-center">
+            <p className="text-gray-700 mb-4">
+                Herhangi bir soru veya aklınıza takılan bir şey olursa lütfen aşağıdaki butondan bize ulaşın.
+            </p>
+            <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="mr-2"
                 >
-                    {isSubmitting ? 'Gönderiliyor...' : 'Mesajı Gönder'}
-                </button>
-                {error && <p className="text-red-500 text-center mt-3">{error}</p>}
-            </form>
+                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.894 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.886-.001 2.269.655 4.502 1.906 6.344l-1.423 5.219 5.035-1.328z"/>
+                </svg>
+                WhatsApp'tan Mesaj Gönder
+            </a>
         </div>
     );
 }
-
 
 function App() {
     const [db, setDb] = useState(null);
@@ -407,9 +360,9 @@ function App() {
             console.log("Veriler Firestore'a kaydedildi.");
         }
 
-        // SendGrid ile e-posta gönder (Netlify Function üzerinden)
+        // SendGrid ile e-posta gönder (Netlify Function üzerinden) - HATA AYIKLAMA GÜNCELLEMESİ
         try {
-            await fetch('/.netlify/functions/send-email', {
+            const response = await fetch('/.netlify/functions/send-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -420,9 +373,18 @@ function App() {
                     userInfoForAdmin: { ...userInfo, overallScore, overallMaxScore }
                 })
             });
-            console.log("E-posta gönderme isteği başarıyla yapıldı.");
+
+            if (!response.ok) {
+                const errorBody = await response.text();
+                console.error(`Netlify fonksiyonu hata döndürdü: ${response.status} ${response.statusText}`, errorBody);
+                throw new Error('E-posta sunucusu bir hata ile karşılaştı.');
+            }
+
+            const result = await response.json();
+            console.log("Netlify fonksiyonundan gelen başarılı yanıt:", result.message);
+
         } catch (emailError) {
-            console.error("E-posta gönderme fonksiyonu hatası:", emailError);
+            console.error("E-posta gönderme fonksiyonuna istek gönderilirken bir hata oluştu:", emailError);
         }
     };
 
@@ -673,8 +635,8 @@ function App() {
                             <p>Kısa süre içinde test sonuçlarını ve özel tavsiyelerini içeren dijital raporun, e-posta adresine ({user.email}) gönderilecek. Gelen kutunu kontrol etmeyi unutma!</p>
                         </div>
                         
-                        {/* GÜNCELLENMİŞ İLETİŞİM FORMU BURADA ÇAĞRILIYOR */}
-                        <FeedbackForm userInfo={user} overallScore={overallScore} overallMaxScore={overallMaxScore} />
+                        {/* BASİTLEŞTİRİLMİŞ İLETİŞİM BÖLÜMÜ */}
+                        <WhatsAppButton />
 
                         <button
                             onClick={() => {
