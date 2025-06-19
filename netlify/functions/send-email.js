@@ -1,5 +1,5 @@
 import sgMail from '@sendgrid/mail';
-// OpenAI kütüphanesi artık kullanılmayacağı için kaldırıldı
+import { GoogleGenerativeAI } from '@google/generative-ai'; // Gemini kütüphanesini ekledik
 
 // SendGrid API anahtarını ortam değişkenlerinden güvenli bir şekilde alın
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -112,7 +112,9 @@ const getSectionTitle = (sectionNum) => {
 };
 
 export const handler = async (event) => {
+  console.log("Netlify Function Başladı."); // *** YENİ LOG ***
   if (event.httpMethod !== 'POST') {
+    console.log("Desteklenmeyen HTTP Metodu:", event.httpMethod); // *** YENİ LOG ***
     return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
   }
 
@@ -120,9 +122,16 @@ export const handler = async (event) => {
     const { scores, quizAnswers, userInfo, selectedSections } = JSON.parse(event.body);
     const { totalScore, totalMaxScore, sectionScores, sectionMaxScores } = scores;
 
+    console.log("Gelen Kullanıcı Bilgileri:", userInfo.email, userInfo.name); // *** YENİ LOG ***
+    console.log("Gelen Seçilen Bölümler:", selectedSections); // *** YENİ LOG ***
+    console.log("Gelen Test Sonuçları (Toplam Puan):", totalScore, totalMaxScore); // *** YENİ LOG ***
+
+
     if (!GEMINI_API_KEY) {
-        throw new Error("Gemini API Key not found in environment variables.");
+      console.error("Gemini API Key ortam değişkenlerinde bulunamadı!"); // *** YENİ LOG ***
+      throw new Error("Gemini API Key not found in environment variables.");
     }
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY); // Gemini modelini burada başlatın
 
     const percentage = (totalScore / totalMaxScore) * 100;
     let performanceLevel = "orta";
@@ -134,20 +143,27 @@ export const handler = async (event) => {
     try {
       const advicePrompt = `Bir kullanıcı dijital pazarlama testinden 100 üzerinden ${Math.round(percentage)} puan aldı. Bu '${performanceLevel}' bir skordur. Tek cümlelik, motive edici ve aksiyona yönelik bir tavsiye ver. METRIQ360'ın IQ360 sistemiyle ilişkilendir ve iletişime yönlendir.`;
       
-      const adviceResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: advicePrompt }] }] })
-      });
-      const adviceResult = await adviceResponse.json();
+      console.log("Gemini API'ye kısa tavsiye için gönderilecek prompt (ilk 200 karakter):", advicePrompt.substring(0, 200)); // *** YENİ LOG ***
 
-      if (adviceResult.candidates && adviceResult.candidates.length > 0 && adviceResult.candidates[0].content && adviceResult.candidates[0].content.parts && adviceResult.candidates[0].content.parts.length > 0) {
-        shortAdvice = adviceResult.candidates[0].content.parts[0].text;
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const adviceResult = await model.generateContent(advicePrompt);
+      const adviceResponse = await adviceResult.response;
+      const adviceText = adviceResponse.text();
+
+      console.log("Gemini API'den kısa tavsiye yanıtı (ilk 200 karakter):", adviceText.substring(0, 200)); // *** YENİ LOG ***
+
+
+      if (adviceText) { // Gemini metin döndürdüyse
+        shortAdvice = adviceText;
       } else {
-        console.error("Gemini API'den kısa tavsiye alınırken beklenmeyen yanıt:", adviceResult);
+        console.error("Gemini API'den kısa tavsiye alınırken boş veya beklenmeyen yanıt:", adviceResult);
       }
     } catch (geminiError) {
-      console.error("Gemini Kısa Tavsiye Hatası:", geminiError);
+      console.error("Gemini Kısa Tavsiye API Çağrısı Hatası:", geminiError); // *** YENİ LOG ***
+      if (geminiError.response) {
+        console.error("Gemini Kısa Tavsiye Hata Detayı:", JSON.stringify(geminiError.response.data)); // *** YENİ LOG ***
+      }
+      shortAdvice = "Kısa tavsiye oluşturulurken bir sorun oluştu.";
     }
 
     // Bölüm bazlı puanları ve güçlü/zayıf soruları rapora eklemek için formatlama
@@ -181,47 +197,47 @@ Paket ve Hizmetler: (Uygun durumlarda raporun içeriği ve gidişatına göre bu
 - IQ Reklam Master-Meta & Google Reklam Yönetimi
 - IQ Süper İkili-İki Paket Bir Arada - Esnek Seçimli
 - IQ Zirve Paketi-Tüm Hizmetler Bir Arada - Full Digital Strateji
- 
+  
 📌 Raporun yapısı şu şekilde olmalı:
- 
+  
 1. **Giriş Bölümü**
-   - Kullanıcının adıyla hitap et.
-   - METRIQ360’ın bu raporu neden sunduğunu açıkla.
-   - Kaç testin çözüldüğünü ve bu testlerin dijital varlıkları nasıl ölçtüğünü kısaca belirt.
-   - Raporun sonunda kullanıcıya kazandıracağı değeri anlat.
-   - Ton: Profesyonel, motive edici, dostça.
- 
+    - Kullanıcının adıyla hitap et.
+    - METRIQ360’ın bu raporu neden sunduğunu açıkla.
+    - Kaç testin çözüldüğünü ve bu testlerin dijital varlıkları nasıl ölçtüğünü kısaca belirt.
+    - Raporun sonunda kullanıcıya kazandıracağı değeri anlat.
+    - Ton: Profesyonel, motive edici, dostça.
+  
 2. **Genel Değerlendirme (${totalNumberOfTests} test çözüldü)**
-   - ${totalNumberOfTests} test çözüldüyse, testler arası ilişkilere dikkat çek.
-   - Her testin öne çıkan güçlü ve zayıf yönlerini açıklayıcı ama özet bir şekilde yaz.
-   - Gereksiz detay verme, stratejik bakış açısı sun.
-   - Test sonuçları detayları:
+    - ${totalNumberOfTests} test çözüldüyse, testler arası ilişkilere dikkat çek.
+    - Her testin öne çıkan güçlü ve zayıf yönlerini açıklayıcı ama özet bir şekilde yaz.
+    - Gereksiz detay verme, stratejik bakış açısı sun.
+    - Test sonuçları detayları:
 ${sectionDetails}
- 
+  
 3. **Test Bazlı Tavsiyeler (Varsa her test için ayrı)**
-   - Her test için 2-3 maddelik uygulanabilir öneriler ver.
-   - Dili sade, doğrudan ve cesaretlendirici olsun.
-   - Gerekiyorsa teknik bilgi ver ama yalın anlat.
- 
+    - Her test için 2-3 maddelik uygulanabilir öneriler ver.
+    - Dili sade, doğrudan ve cesaretlendirici olsun.
+    - Gerekiyorsa teknik bilgi ver ama yalın anlat.
+  
 4. **Genel Dijital Strateji Önerisi**
-   - Testlerin tamamı üzerinden, firmanın dijitaldeki büyüme potansiyelini ve odaklanması gereken alanları belirt.
-   - Yani bütünün fotoğrafını çek: Bu işletme nerede duruyor, dijitalde ne kadar gelişebilir, öncelikler ne olmalı?
- 
+    - Testlerin tamamı üzerinden, firmanın dijitaldeki büyüme potansiyelini ve odaklanması gereken alanları belirt.
+    - Yani bütünün fotoğrafını çek: Bu işletme nerede duruyor, dijitalde ne kadar gelişebilir, öncelikler ne olmalı?
+  
 5. **Uygun METRIQ360 Paket Önerisi**
-   - Test sonuçlarına göre 1 veya 2 hizmet paketini öner.
-   - Neden bu paketi önerdiğini kısa ama net açıklamalarla yaz.
- 
+    - Test sonuçlarına göre 1 veya 2 hizmet paketini öner.
+    - Neden bu paketi önerdiğini kısa ama net açıklamalarla yaz.
+  
 6. **Kapanış**
-   - Kullanıcıyı dijital potansiyelini gerçekleştirmesi için cesaretlendir.
-   - METRIQ360’ın “IQ360 Sistemi” ve “Turuncu Güç” yaklaşımına kısaca değin.
-   - İletişime geçmeye davet et.
- 
+    - Kullanıcıyı dijital potansiyelini gerçekleştirmesi için cesaretlendir.
+    - METRIQ360’ın “IQ360 Sistemi” ve “Turuncu Güç” yaklaşımına kısaca değin.
+    - İletişime geçmeye davet et.
+  
 7. **İletişim Bilgileri** (aynen yaz):
-   🌐 ${metriq360Info.websiteUrl}
-   ✉️ ${metriq360Info.contactEmail}
-   📞 ${metriq360Info.contactNumber}
- 
- 
+    🌐 ${metriq360Info.websiteUrl}
+    ✉️ ${metriq360Info.contactEmail}
+    📞 ${metriq360Info.contactNumber}
+  
+  
 🧠 Kurallar:
 - Rapor çok şık ve modern görünsün, önemli yerler vurgulansın, başlıklar belirgin olsun, rapor düzeni çok düzgün olsun
 - Skorları teker teker sıralama.
@@ -245,20 +261,25 @@ Genel Puan: ${overallPercentageScore} / 100
 
     let detailedReport = "Rapor oluşturulamadı.";
     try {
-      const reportResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: detailedReportPrompt }] }] })
-      });
-      const reportResult = await reportResponse.json();
+      console.log("Gemini API'ye detaylı rapor için gönderilecek prompt (ilk 200 karakter):", detailedReportPrompt.substring(0, 200)); // *** YENİ LOG ***
+      
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const reportResult = await model.generateContent(detailedReportPrompt);
+      const reportResponse = await reportResult.response;
+      const reportText = reportResponse.text();
 
-      if (reportResult.candidates && reportResult.candidates.length > 0 && reportResult.candidates[0].content && reportResult.candidates[0].content.parts && reportResult.candidates[0].content.parts.length > 0) {
-        detailedReport = reportResult.candidates[0].content.parts[0].text;
+      console.log("Gemini API'den detaylı rapor yanıtı (ilk 200 karakter):", reportText.substring(0, 200)); // *** YENİ LOG ***
+
+      if (reportText) { // Gemini metin döndürdüyse
+        detailedReport = reportText;
       } else {
-        console.error("Gemini API'den detaylı rapor alınırken beklenmeyen yanıt:", reportResult);
+        console.error("Gemini API'den detaylı rapor alınırken boş veya beklenmeyen yanıt:", reportResult);
       }
     } catch (geminiError) {
-      console.error("Gemini Detaylı Rapor Hatası:", geminiError);
+      console.error("Gemini Detaylı Rapor API Çağrısı Hatası:", geminiError); // *** YENİ LOG ***
+      if (geminiError.response) {
+        console.error("Gemini Detaylı Rapor Hata Detayı:", JSON.stringify(geminiError.response.data)); // *** YENİ LOG ***
+      }
       detailedReport = "Detaylı rapor oluşturulurken bir hata oluştu.";
     }
 
@@ -297,20 +318,27 @@ Genel Puan: ${overallPercentageScore} / 100
 
     // Mail gönder
     try {
+      console.log("E-posta gönderiliyor... Kullanıcıya:", userInfo.email, "Yöneticiye:", metriq360Info.contactEmail); // *** YENİ LOG ***
       await Promise.all([sgMail.send(msgToUser), sgMail.send(msgToAdmin)]);
+      console.log("E-postalar başarıyla gönderildi."); // *** YENİ LOG ***
     } catch (emailErr) {
-      console.error("E-posta Gönderim Hatası:", emailErr);
+      console.error("E-posta Gönderim Hatası:", emailErr); // *** MEVCUT LOG DAHA DETAYLI ***
+      if (emailErr.response) {
+        console.error("E-posta hatası kodu:", emailErr.response.statusCode); // *** YENİ LOG ***
+        console.error("E-posta hatası yanıtı (body):", JSON.stringify(emailErr.response.body)); // *** YENİ LOG ***
+      }
       // E-posta gönderimi hatası uygulamanın çalışmasını engellememeli,
       // sadece loglanmalı veya kullanıcıya bilgi verilmelidir.
     }
 
+    console.log("Fonksiyon başarılı yanıt döndürüyor."); // *** YENİ LOG ***
     return {
       statusCode: 200,
       body: JSON.stringify({ shortAdvice, detailedReport }),
     };
 
   } catch (err) {
-    console.error("Genel Fonksiyon Hatası:", err);
+    console.error("Genel Fonksiyon Hatası (Catch bloğu):", err); // *** YENİ LOG ***
     return {
       statusCode: 500,
       body: JSON.stringify({ error: err.message || "Sunucu hatası" }),
