@@ -1,15 +1,13 @@
-// /netlify/functions/send-email.js
-
 import sgMail from '@sendgrid/mail';
 import OpenAI from 'openai';
 
-// 🔒 Ortam değişkenlerini güvenli şekilde al
+// API anahtarları ortam değişkenlerinden güvenli alınır
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // ❌ VITE_ yok!
+  apiKey: process.env.OPENAI_API_KEY, // Burada VITE_ olmamalı, fonksiyon ortamı
 });
 
-// 🛡️ Basit XSS koruma
+// Basit HTML escape fonksiyonu (XSS koruması için)
 const escapeHtml = (unsafe = "") => unsafe
   .replace(/&/g, "&amp;")
   .replace(/</g, "&lt;")
@@ -17,10 +15,10 @@ const escapeHtml = (unsafe = "") => unsafe
   .replace(/"/g, "&quot;")
   .replace(/'/g, "&#039;");
 
-// 🧠 Soru bankası
-const allQuestions = [/*... sorular aynı şekilde buraya gelecek ...*/];
+// Soru bankası (buraya senin sorular gelecek)
+const allQuestions = [/* ... */];
 
-// 🎯 Bölüm başlıklarını al
+// Bölüm başlıkları
 const getSectionTitle = (sectionNum) => {
   const titles = {
     1: 'Sosyal Medya Yönetimi',
@@ -32,7 +30,6 @@ const getSectionTitle = (sectionNum) => {
   return titles[sectionNum] || `Bölüm ${sectionNum}`;
 };
 
-// 📬 Ana handler fonksiyonu
 export const handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
@@ -47,14 +44,14 @@ export const handler = async (event) => {
     if (percentage < 40) performanceLevel = "geliştirilmesi gereken";
     else if (percentage >= 75) performanceLevel = "güçlü";
 
-    // GPT'den kısa tavsiye al
+    // Kısa tavsiye (OpenAI GPT-3.5 Turbo)
     let shortAdvice = "Tavsiye oluşturulamadı.";
     try {
       const adviceResult = await openai.chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: [{
           role: "user",
-          content: `Bir kullanıcı, dijital pazarlama testinden 100 üzerinden ${Math.round(percentage)} puan aldı. Bu '${performanceLevel}' bir skordur. Bu kullanıcıya tek cümlelik, motive edici ve aksiyona yönelik bir tavsiye ver. METRIQ360'ın IQ360 sistemiyle ilişkilendir ve onlarla iletişime yönlendir.`,
+          content: `Bir kullanıcı dijital pazarlama testinden 100 üzerinden ${Math.round(percentage)} puan aldı. Bu '${performanceLevel}' bir skordur. Tek cümlelik, motive edici ve aksiyona yönelik bir tavsiye ver. METRIQ360'ın IQ360 sistemiyle ilişkilendir ve iletişime yönlendir.`,
         }],
         max_tokens: 150,
         temperature: 0.8,
@@ -64,7 +61,7 @@ export const handler = async (event) => {
       console.error("OpenAI Tavsiye Hatası:", gptError);
     }
 
-    // Güçlü / zayıf bölümleri belirle
+    // Güçlü ve zayıf bölümleri belirle
     const strongSections = [], weakSections = [];
     Object.keys(sectionScores).forEach(sectionNum => {
       const score = sectionScores[sectionNum];
@@ -75,7 +72,7 @@ export const handler = async (event) => {
       else if (pct <= 40) weakSections.push(title);
     });
 
-    // Detaylı cevapları birleştir
+    // Detaylı sonuçlar
     const testResultsDetails = Object.keys(sectionScores).map(sectionNum => {
       const title = getSectionTitle(parseInt(sectionNum));
       const questions = allQuestions.filter(q => q.section === parseInt(sectionNum));
@@ -85,9 +82,10 @@ export const handler = async (event) => {
       return `**${title}**\n${answers}`;
     }).join('\n\n');
 
-    const prompt = `Sen bir dijital pazarlama uzmanısın ve METRIQ360 için sektör odaklı raporlar yazıyorsun.
-    
-Kullanıcı Bilgileri:
+    // GPT-4o ile detaylı rapor promptu
+    const prompt = `Sen dijital pazarlama uzmanısın ve METRIQ360 için sektör odaklı raporlar yazıyorsun.
+
+Kullanıcı:
 Ad: ${userInfo.name} ${userInfo.surname}
 Sektör: ${userInfo.sector}
 Genel Puan: ${totalScore} / ${totalMaxScore}
@@ -98,7 +96,6 @@ Detaylı Sonuçlar:
 ${testResultsDetails}
 `;
 
-    // GPT'den detaylı rapor al
     let detailedReport = "Rapor oluşturulamadı.";
     try {
       const reportResult = await openai.chat.completions.create({
@@ -111,9 +108,10 @@ ${testResultsDetails}
       console.error("OpenAI Rapor Hatası:", gptError);
     }
 
-    // E-posta formatı
+    // Mail formatı
     const reportHtml = detailedReport.replace(/\n/g, '<br>');
     const nameSafe = escapeHtml(userInfo.name);
+    const surnameSafe = escapeHtml(userInfo.surname);
     const sectorSafe = escapeHtml(userInfo.sector);
 
     const msgToUser = {
@@ -132,18 +130,18 @@ ${testResultsDetails}
     const msgToAdmin = {
       to: 'bilgi@metriq360.com',
       from: 'iletisim@metriq360.com',
-      subject: `Yeni Test: ${nameSafe} ${escapeHtml(userInfo.surname)}`,
+      subject: `Yeni Test: ${nameSafe} ${surnameSafe}`,
       html: `
         <h2>Yeni test tamamlandı</h2>
-        <p><strong>Ad:</strong> ${nameSafe}</p>
+        <p><strong>Ad:</strong> ${nameSafe} ${surnameSafe}</p>
         <p><strong>Sektör:</strong> ${sectorSafe}</p>
-        <p><strong>Puan:</strong> ${totalScore}/${totalMaxScore}</p>
+        <p><strong>Puan:</strong> ${totalScore} / ${totalMaxScore}</p>
         <hr>
         ${reportHtml}
       `
     };
 
-    // E-postaları gönder
+    // Mail gönder
     try {
       await Promise.all([sgMail.send(msgToUser), sgMail.send(msgToAdmin)]);
     } catch (emailErr) {
