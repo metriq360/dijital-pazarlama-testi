@@ -372,7 +372,7 @@ Genel Puan: ${overallPercentageScore} / 100
 
 
     try {
-      // API çağrısı
+      // Rapor oluşturma için API çağrısı
       const apiKey = ""; 
       const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey;
 
@@ -435,30 +435,18 @@ Genel Puan: ${overallPercentageScore} / 100
         console.error("Firestore veya kullanıcı kimliği mevcut değil, veriler kaydedilemedi.");
       }
 
-      // E-posta gönderimi simülasyonu
-      console.log(`--- E-posta Simülasyonu ---`);
-      console.log(`Gönderen: ${user.email} (Kullanıcıya)`);
-      console.log(`Alıcı: ${metriq360Info.contactEmail} (Site Sahibi)`);
-      console.log(`Konu: Dijital Pazarlama Sağlık Testi Raporunuz`);
-      console.log(`İçerik: \n${generatedReport}`);
-      console.log(`--------------------------`);
-
-      // Gerçek e-posta gönderimi için buraya bir arka uç servisi entegrasyonu eklenmelidir.
-      // Örnek: Bir "serverless function" veya kendi sunucunuz üzerinden SendGrid/Mailgun API'si kullanımı.
-      // fetch('/api/send-email', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     userEmail: user.email,
-      //     adminEmail: metriq360Info.contactEmail, // Kendi e-posta adresiniz
-      //     reportContent: generatedReport,
-      //     userName: user.name,
-      //     userSector: user.sector
-      //   })
-      // });
+      // E-posta gönderimi hakkında ÖNEMLİ NOT:
+      // SendGrid gibi e-posta servislerinin API anahtarlarını doğrudan tarayıcıda (istemci tarafında) kullanmak GÜVENLİ DEĞİLDİR.
+      // Bu nedenle, gerçek bir e-posta gönderimi için sunucu tarafında (örneğin Netlify Functions, Firebase Cloud Functions veya kendi backend sunucunuz)
+      // güvenli bir API endpoint'i oluşturmanız ve e-posta gönderimini bu endpoint üzerinden yapmanız gerekmektedir.
+      // Aşağıdaki satırlar, gerçek bir entegrasyonun nasıl olması gerektiğini gösteren bir YER TUTUCUDUR ve istemci tarafında doğrudan ÇALIŞTIRILMAMALIDIR.
+      console.log(`--- E-posta Gönderimi Bilgisi ---`);
+      console.log(`E-posta: "${user.email}" adresine rapor gönderildi olarak kaydedildi.`);
+      console.log(`Gerçek e-posta gönderimi için sunucu tarafı bir çözüm (örn. Netlify Function veya Firebase Cloud Function) gereklidir.`);
+      console.log(`----------------------------------`);
 
     } catch (apiError) {
-      console.error("Detaylı rapor hatası:", apiError);
+      console.error("Detaylı rapor oluşturma hatası:", apiError);
       setReportData('Detaylı rapor oluşturulurken bir hata oluştu.');
     } finally {
       setReportLoading(false);
