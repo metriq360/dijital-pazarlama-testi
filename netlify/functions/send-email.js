@@ -10,7 +10,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Gemini API anahtarı
 
 // Soru bankası (App.jsx'ten kopyalandı)
 const allQuestions = [
-  // Bölüm 1: Sosyal Medya Yönetimi
+  // Section 1: Sosyal Medya Yönetimi
   { id: 'q1_1', section: 1, text: 'Sosyal medya hesaplarınızda ne sıklıkta paylaşım yapıyorsunuz?' },
   { id: 'q1_2', section: 1, text: 'Her platform için ayrı bir strateji uyguluyor musunuz?' },
   { id: 'q1_3', section: 1, text: 'Takipçi sayınız son 6 ayda istikrarlı bir şekilde arttı mı?' },
@@ -22,7 +22,7 @@ const allQuestions = [
   { id: 'q1_9', section: 1, text: 'Rakiplerinizin sosyal medya stratejilerini analiz ediyor musunuz?' },
   { id: 'q1_10', section: 1, text: 'Sosyal medya için dış kaynak ya da ajans desteği alıyor musunuz?' },
 
-  // Bölüm 2: Yerel SEO ve Google Benim İşletmem
+  // Section 2: Yerel SEO ve Google Benim İşletmem
   { id: 'q2_1', section: 2, text: 'Google Benim İşletmem (GBP) profiliniz var mı?' },
   { id: 'q2_2', section: 2, text: 'GBP profilinizde adres, telefon ve açık saatler eksiksiz mi?' },
   { id: 'q2_3', section: 2, text: 'GBP üzerinde sık sık içerik (fotoğraf, gönderi) paylaşıyor musunuz?' },
@@ -34,7 +34,7 @@ const allQuestions = [
   { id: 'q2_9', section: 2, text: 'GBP verilerini (gösterim, tıklama vs.) analiz ediyor musunuz?' },
   { id: 'q2_10', section: 2, text: 'Yerel anahtar kelimelere yönelik stratejiniz var mı?' },
 
-  // Bölüm 3: Reklam ve Kampanya Yönetimi
+  // Section 3: Reklam ve Kampanya Yönetimi
   { id: 'q3_1', section: 3, text: 'Meta (Facebook/Instagram) reklamları yürütüyor musunuz?' },
   { id: 'q3_2', section: 3, text: 'Google Ads kampanyaları aktif mi?' },
   { id: 'q3_3', section: 3, text: 'Hedef kitle tanımlarınız net mi?' },
@@ -46,7 +46,7 @@ const allQuestions = [
   { id: 'q3_9', section: 3, text: 'Dönüşüm takibi yapabiliyor musunuz (pixel, GA)?' },
   { id: 'q3_10', section: 3, text: 'Reklam performans raporlarını haftalık/aylık inceliyor musunuz?' },
 
-  // Bölüm 4: İçerik Pazarlaması
+  // Section 4: Content Marketing
   { id: 'q4_1', section: 4, text: 'Web sitenizde blog içerikleri yayınlıyor musunuz?' },
   { id: 'q4_2', section: 4, text: 'İçerikleriniz belirli bir stratejiye göre mı hazırlanıyor?' },
   { id: 'q4_3', section: 4, text: 'İçeriklerinizin hedef kitlenizin sorunlarına çözüm sunduğunu düşünüyor musunuz?' },
@@ -58,14 +58,14 @@ const allQuestions = [
   { id: 'q4_9', section: 4, text: 'Blog yazılarında görsel, infografik gibi unsurlar kullanıyor musunuz?' },
   { id: 'q4_10', section: 4, text: 'İçerik üretimi için profesyonel destek alıyor musunuz?' },
 
-  // Bölüm 5: Pazarlama Araçları ve Otomasyon
+  // Section 5: Marketing Tools and Automation
   { id: 'q5_1', section: 5, text: 'Hangi pazarlama otomasyon araçlarını kullanıyorsunuz?' },
   { id: 'q5_2', section: 5, text: 'E-posta pazarlaması yapıyor musunuz?' },
   { id: 'q5_3', section: 5, text: 'E-posta listenizi segmentlere ayırıyor musunuz?' },
   { id: 'q5_4', section: 5, text: 'Google Analytics veya benzeri araçlarla sitenizi analiz ediyor musunuz?' },
   { id: 'q5_5', section: 5, text: 'Ziyaretçi davranışlarını analiz etmek için bir sisteminiz var mı?' },
   { id: 'q5_6', section: 5, text: 'Sosyal medya zamanlayıcı araçlar (Buffer, Meta Planner vb.) kullanıyor musunuz?' },
-  { id: 'q5_7', section: 5, text: 'CRM veya müşteri yönetim sistemi kullanıyor musunuz?' }, // '데이' kaldırıldı
+  { id: 'q5_7', section: 5, text: 'CRM veya müşteri yönetim sistemi kullanıyor musunuz?' },
   { id: 'q5_8', section: 5, text: 'Pazarlama performansınızı raporlayan otomatik sistemler var mı?' },
   { id: 'q5_9', section: 5, text: 'Online formlarınızdan gelen verileri merkezi bir yerde topluyor musunuz?' },
   { id: 'q5_10', section: 5, text: 'Dijital pazarlama süreçlerinin tümünü bir sistem dahilinde takip ediyor musunuz?' },
@@ -74,7 +74,7 @@ const allQuestions = [
 // Metriq360 Paket Bilgileri ve URL'ler (App.jsx'ten kopyalandı)
 const metriq360Info = {
   websiteUrl: 'https://www.metriq360.com',
-  contactEmail: 'bilgi@metriq360.com',
+  contactEmail: 'bilgi@metriq360.com', // E-posta adresi güncellendi
   contactNumber: '+90 537 948 48 68',
   services: [
     "SEO Danışmanlığı", "İçerik Pazarlaması", "Sosyal Medya Yönetimi", "Meta & Google Reklam Yönetimi",
@@ -199,7 +199,11 @@ export const handler = async (event) => {
     ${sectionDetails}
 3.  **Ana Tavsiyeler**: Tüm testler üzerinden, firmanın dijitalde odaklanması gereken en önemli 2-3 alanı ve uygulanabilir önerileri madde madde sun.
 4.  **Uygun METRIQ360 Paket Önerisi**: Test sonuçlarına göre en uygun 1-2 hizmet paketini (IQ Yerel Güç, IQ Sosyal Büyüme, IQ Reklam Master, IQ Süper İkili, IQ Zirve Paketi) ve nedenini kısaca açıkla.
-5.  **Kapanış ve İletişim**: Kullanıcıyı cesaretlendir, METRIQ360'ın farkına değin ve iletişime davet et. İletişim bilgilerini (web, e-posta, telefon) ekle.
+5.  **Kapanış ve İletişim**: Kullanıcıyı cesaretlendir, METRIQ360'ın farkına değin ve iletişime davet et.
+6.  **İletişim Bilgileri** (aynen yaz):
+    - Web: www.metriq360.com
+    - E-posta: bilgi@metriq360.com
+    - Telefon: +90 537 948 48 68
 
 ---
 **Kullanıcı Bilgileri:**
@@ -281,7 +285,7 @@ Genel Puan: ${overallPercentageScore} / 100
     try {
       console.log("E-posta gönderiliyor... Sadece Yöneticiye:", metriq360Info.contactEmail); // *** NEW LOG ***
       await sgMail.send(msgToAdmin); // Sadece admin maili gönderiliyor
-      console.log("E-posta başarıyla gönderildi."); // *** NEW LOG ***
+      console.log("E-postalar başarıyla gönderildi."); // *** NEW LOG ***
     } catch (emailErr) {
       console.error("E-posta Gönderim Hatası:", emailErr); // *** EXISTING LOG MORE DETAILED ***
       if (emailErr.response) {
