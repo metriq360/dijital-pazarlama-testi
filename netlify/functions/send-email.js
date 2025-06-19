@@ -112,9 +112,9 @@ const getSectionTitle = (sectionNum) => {
 };
 
 export const handler = async (event) => {
-  console.log("Netlify Function Başladı."); // *** YENİ LOG ***
+  console.log("Netlify Function Başladı."); // *** NEW LOG ***
   if (event.httpMethod !== 'POST') {
-    console.log("Desteklenmeyen HTTP Metodu:", event.httpMethod); // *** YENİ LOG ***
+    console.log("Desteklenmeyen HTTP Metodu:", event.httpMethod); // *** NEW LOG ***
     return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
   }
 
@@ -122,13 +122,13 @@ export const handler = async (event) => {
     const { scores, quizAnswers, userInfo, selectedSections } = JSON.parse(event.body);
     const { totalScore, totalMaxScore, sectionScores, sectionMaxScores } = scores;
 
-    console.log("Gelen Kullanıcı Bilgileri:", userInfo.email, userInfo.name); // *** YENİ LOG ***
-    console.log("Gelen Seçilen Bölümler:", selectedSections); // *** YENİ LOG ***
-    console.log("Gelen Test Sonuçları (Toplam Puan):", totalScore, totalMaxScore); // *** YENİ LOG ***
+    console.log("Gelen Kullanıcı Bilgileri:", userInfo.email, userInfo.name); // *** NEW LOG ***
+    console.log("Gelen Seçilen Bölümler:", selectedSections); // *** NEW LOG ***
+    console.log("Gelen Test Sonuçları (Toplam Puan):", totalScore, totalMaxScore); // *** NEW LOG ***
 
 
     if (!GEMINI_API_KEY) {
-      console.error("Gemini API Key ortam değişkenlerinde bulunamadı!"); // *** YENİ LOG ***
+      console.error("Gemini API Key ortam değişkenlerinde bulunamadı!"); // *** NEW LOG ***
       throw new Error("Gemini API Key not found in environment variables.");
     }
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY); // Gemini modelini burada başlatın
@@ -143,14 +143,14 @@ export const handler = async (event) => {
     try {
       const advicePrompt = `Bir kullanıcı dijital pazarlama testinden 100 üzerinden ${Math.round(percentage)} puan aldı. Bu '${performanceLevel}' bir skordur. Tek cümlelik, motive edici ve aksiyona yönelik bir tavsiye ver. METRIQ360'ın IQ360 sistemiyle ilişkilendir ve iletişime yönlendir.`;
       
-      console.log("Gemini API'ye kısa tavsiye için gönderilecek prompt (ilk 200 karakter):", advicePrompt.substring(0, 200)); // *** YENİ LOG ***
+      console.log("Gemini API'ye kısa tavsiye için gönderilecek prompt (ilk 200 karakter):", advicePrompt.substring(0, 200)); // *** NEW LOG ***
 
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
       const adviceResult = await model.generateContent(advicePrompt);
       const adviceResponse = await adviceResult.response;
       const adviceText = adviceResponse.text();
 
-      console.log("Gemini API'den kısa tavsiye yanıtı (ilk 200 karakter):", adviceText.substring(0, 200)); // *** YENİ LOG ***
+      console.log("Gemini API'den kısa tavsiye yanıtı (ilk 200 karakter):", adviceText.substring(0, 200)); // *** NEW LOG ***
 
 
       if (adviceText) { // Gemini metin döndürdüyse
@@ -159,9 +159,9 @@ export const handler = async (event) => {
         console.error("Gemini API'den kısa tavsiye alınırken boş veya beklenmeyen yanıt:", adviceResult);
       }
     } catch (geminiError) {
-      console.error("Gemini Kısa Tavsiye API Çağrısı Hatası:", geminiError); // *** YENİ LOG ***
+      console.error("Gemini Kısa Tavsiye API Çağrısı Hatası:", geminiError); // *** NEW LOG ***
       if (geminiError.response) {
-        console.error("Gemini Kısa Tavsiye Hata Detayı:", JSON.stringify(geminiError.response.data)); // *** YENİ LOG ***
+        console.error("Gemini Kısa Tavsiye Hata Detayı:", JSON.stringify(geminiError.response.data)); // *** NEW LOG ***
       }
       shortAdvice = "Kısa tavsiye oluşturulurken bir sorun oluştu.";
     }
@@ -213,14 +213,14 @@ Genel Puan: ${overallPercentageScore} / 100
 
     let detailedReport = "Rapor oluşturulamadı.";
     try {
-      console.log("Gemini API'ye detaylı rapor için gönderilecek prompt (ilk 200 karakter):", detailedReportPrompt.substring(0, 200)); // *** YENİ LOG ***
+      console.log("Gemini API'ye detaylı rapor için gönderilecek prompt (ilk 200 karakter):", detailedReportPrompt.substring(0, 200)); // *** NEW LOG ***
       
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
       const reportResult = await model.generateContent(detailedReportPrompt);
       const reportResponse = await reportResult.response;
       const reportText = reportResponse.text();
 
-      console.log("Gemini API'den detaylı rapor yanıtı (ilk 200 karakter):", reportText.substring(0, 200)); // *** YENİ LOG ***
+      console.log("Gemini API'den detaylı rapor yanıtı (ilk 200 karakter):", reportText.substring(0, 200)); // *** NEW LOG ***
 
       if (reportText) { // Gemini metin döndürdüyse
         detailedReport = reportText;
@@ -228,9 +228,9 @@ Genel Puan: ${overallPercentageScore} / 100
         console.error("Gemini API'den detaylı rapor alınırken boş veya beklenmeyen yanıt:", reportResult);
       }
     } catch (geminiError) {
-      console.error("Gemini Detaylı Rapor API Çağrısı Hatası:", geminiError); // *** YENİ LOG ***
+      console.error("Gemini Detaylı Rapor API Çağrısı Hatası:", geminiError); // *** NEW LOG ***
       if (geminiError.response) {
-        console.error("Gemini Detaylı Rapor Hata Detayı:", JSON.stringify(geminiError.response.data)); // *** YENİ LOG ***
+        console.error("Gemini Detaylı Rapor Hata Detayı:", JSON.stringify(geminiError.response.data)); // *** NEW LOG ***
       }
       detailedReport = "Detaylı rapor oluşturulurken bir hata oluştu.";
     }
@@ -241,18 +241,19 @@ Genel Puan: ${overallPercentageScore} / 100
     const surnameSafe = escapeHtml(userInfo.surname);
     const sectorSafe = escapeHtml(userInfo.sector);
 
-    const msgToUser = {
-      to: userInfo.email,
-      from: metriq360Info.contactEmail, // Gönderen e-posta adresi güncellendi
-      subject: `🚀 Dijital Pazarlama Raporunuz, ${nameSafe}!`,
-      html: `
-        <h2>Merhaba ${nameSafe},</h2>
-        <p>Testi tamamladığınız için teşekkürler!</p>
-        <p><strong>Kısa Tavsiye:</strong> ${escapeHtml(shortAdvice)}</p>
-        <hr>
-        ${reportHtml}
-      `
-    };
+    // Kullanıcıya gönderilen e-posta çıkarıldı
+    // const msgToUser = {
+    //   to: userInfo.email,
+    //   from: metriq360Info.contactEmail,
+    //   subject: `🚀 Dijital Pazarlama Raporunuz, ${nameSafe}!`,
+    //   html: `
+    //     <h2>Merhaba ${nameSafe},</h2>
+    //     <p>Testi tamamladığınız için teşekkürler!</p>
+    //     <p><strong>Kısa Tavsiye:</strong> ${escapeHtml(shortAdvice)}</p>
+    //     <hr>
+    //     ${reportHtml}
+    //   `
+    // };
 
     const msgToAdmin = {
       to: metriq360Info.contactEmail, // Site sahibinin e-posta adresi
@@ -262,35 +263,43 @@ Genel Puan: ${overallPercentageScore} / 100
         <h2>Yeni test tamamlandı</h2>
         <p><strong>Ad:</strong> ${nameSafe} ${surnameSafe}</p>
         <p><strong>Sektör:</strong> ${sectorSafe}</p>
+        <p><strong>E-posta:</strong> ${userInfo.email}</p>
         <p><strong>Puan:</strong> ${totalScore} / ${totalMaxScore}</p>
         <hr>
         ${reportHtml}
+        <h3>Kullanıcının Verdiği Yanıtlar:</h3>
+        <ul>
+          ${Object.keys(quizAnswers).map(qId => {
+            const question = allQuestions.find(q => q.id === qId);
+            return `<li><strong>Bölüm ${question.section} - ${getSectionTitle(question.section)} - ${question.text}</strong>: ${quizAnswers[qId]}/5</li>`;
+          }).join('')}
+        </ul>
       `
     };
 
-    // Mail gönder
+    // Mail gönder - Sadece yöneticiye gönderiliyor
     try {
-      console.log("E-posta gönderiliyor... Kullanıcıya:", userInfo.email, "Yöneticiye:", metriq360Info.contactEmail); // *** YENİ LOG ***
-      await Promise.all([sgMail.send(msgToUser), sgMail.send(msgToAdmin)]);
-      console.log("E-postalar başarıyla gönderildi."); // *** YENİ LOG ***
+      console.log("E-posta gönderiliyor... Sadece Yöneticiye:", metriq360Info.contactEmail); // *** NEW LOG ***
+      await sgMail.send(msgToAdmin); // Sadece admin maili gönderiliyor
+      console.log("E-posta başarıyla gönderildi."); // *** NEW LOG ***
     } catch (emailErr) {
-      console.error("E-posta Gönderim Hatası:", emailErr); // *** MEVCUT LOG DAHA DETAYLI ***
+      console.error("E-posta Gönderim Hatası:", emailErr); // *** EXISTING LOG MORE DETAILED ***
       if (emailErr.response) {
-        console.error("E-posta hatası kodu:", emailErr.response.statusCode); // *** YENİ LOG ***
-        console.error("E-posta hatası yanıtı (body):", JSON.stringify(emailErr.response.body)); // *** YENİ LOG ***
+        console.error("E-posta hatası kodu:", emailErr.response.statusCode); // *** NEW LOG ***
+        console.error("E-posta hatası yanıtı (body):", JSON.stringify(emailErr.response.body)); // *** NEW LOG ***
       }
       // E-posta gönderimi hatası uygulamanın çalışmasını engellememeli,
       // sadece loglanmalı veya kullanıcıya bilgi verilmelidir.
     }
 
-    console.log("Fonksiyon başarılı yanıt döndürüyor."); // *** YENİ LOG ***
+    console.log("Fonksiyon başarılı yanıt döndürüyor."); // *** NEW LOG ***
     return {
       statusCode: 200,
       body: JSON.stringify({ shortAdvice, detailedReport }),
     };
 
   } catch (err) {
-    console.error("Genel Fonksiyon Hatası (Catch bloğu):", err); // *** YENİ LOG ***
+    console.error("Genel Fonksiyon Hatası (Catch bloğu):", err); // *** NEW LOG ***
     return {
       statusCode: 500,
       body: JSON.stringify({ error: err.message || "Sunucu hatası" }),
