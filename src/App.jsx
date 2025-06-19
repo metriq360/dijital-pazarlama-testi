@@ -25,7 +25,7 @@ const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial
 // Test questions and section titles
 // This data will also be used within the Netlify Function.
 const allQuestions = [
-  // Section 1: Social Media Management
+  // Section 1: Sosyal Medya Yönetimi
   { id: 'q1_1', section: 1, text: 'Sosyal medya hesaplarınızda ne sıklıkta paylaşım yapıyorsunuz?' },
   { id: 'q1_2', section: 1, text: 'Her platform için ayrı bir strateji uyguluyor musunuz?' },
   { id: 'q1_3', section: 1, text: 'Takipçi sayınız son 6 ayda istikrarlı bir şekilde arttı mı?' },
@@ -37,7 +37,7 @@ const allQuestions = [
   { id: 'q1_9', section: 1, text: 'Rakiplerinizin sosyal medya stratejilerini analiz ediyor musunuz?' },
   { id: 'q1_10', section: 1, text: 'Sosyal medya için dış kaynak ya da ajans desteği alıyor musunuz?' },
 
-  // Section 2: Local SEO and Google My Business
+  // Section 2: Yerel SEO ve Google Benim İşletmem
   { id: 'q2_1', section: 2, text: 'Google Benim İşletmem (GBP) profiliniz var mı?' },
   { id: 'q2_2', section: 2, text: 'GBP profilinizde adres, telefon ve açık saatler eksiksiz mi?' },
   { id: 'q2_3', section: 2, text: 'GBP üzerinde sık sık içerik (fotoğraf, gönderi) paylaşıyor musunuz?' },
@@ -49,7 +49,7 @@ const allQuestions = [
   { id: 'q2_9', section: 2, text: 'GBP verilerini (gösterim, tıklama vs.) analiz ediyor musunuz?' },
   { id: 'q2_10', section: 2, text: 'Yerel anahtar kelimelere yönelik stratejiniz var mı?' },
 
-  // Section 3: Advertising and Campaign Management
+  // Section 3: Reklam ve Kampanya Yönetimi
   { id: 'q3_1', section: 3, text: 'Meta (Facebook/Instagram) reklamları yürütüyor musunuz?' },
   { id: 'q3_2', section: 3, text: 'Google Ads kampanyaları aktif mi?' },
   { id: 'q3_3', section: 3, text: 'Hedef kitle tanımlarınız net mi?' },
@@ -86,10 +86,10 @@ const allQuestions = [
   { id: 'q5_10', section: 5, text: 'Dijital pazarlama süreçlerinin tümünü bir sistem dahilinde takip ediyor musunuz?' },
 ];
 
-// Metriq360 Package Information and URLs
+// Metriq360 Paket Bilgileri ve URL'ler (App.jsx'ten kopyalandı)
 const metriq360Info = {
   websiteUrl: 'https://www.metriq360.com',
-  contactEmail: 'bilgi@metriq360.com',
+  contactEmail: 'bilgi@metriq360.com', 
   contactNumber: '+90 537 948 48 68',
   services: [
     "SEO Danışmanlığı", "İçerik Pazarlaması", "Sosyal Medya Yönetimi", "Meta & Google Reklam Yönetimi",
@@ -571,21 +571,23 @@ function App() {
               Yeni Bir Test Yap
             </button>
 
-            {/* WhatsApp Contact Button */}
-            <p className="text-gray-600 mt-6">
-              Herhangi bir soru veya aklınıza takılan bir şey olursa lütfen aşağıdaki butondan bize ulaşın.
-            </p>
-            <a
-              href={`https://wa.me/${metriq360Info.contactNumber.replace(/\s/g, '')}?text=Merhaba,%20bilgi%20almak%20istiyorum.`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400 mt-2"
-            >
-              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.611-3.924-1.611-6.223 0-6.814 5.254-12.385 11.758-12.385 3.327 0 6.402 1.501 8.654 3.684 2.254 2.183 3.491 5.006 3.491 8.016 0 6.814-5.254 12.385-11.758 12.385-1.927 0-3.805-.443-5.49-1.218l-6.22 1.621zm10.748-23.363c-5.918 0-10.748 4.743-10.748 10.598 0 2.052.573 3.993 1.543 5.736l-1.054 3.864 3.957-1.03c1.677.925 3.627 1.458 5.679 1.458 5.918 0 10.748-4.743 10.748-10.598s-4.83-10.598-10.748-10.598zm5.556 12.162c-.096 0-.665-.306-.925-.407-.26-.1-.6-.151-.861.101-.26.251-.762.909-.933 1.092-.17.184-.341.207-.636.082-.295-.126-1.25-.461-2.38-1.474-.88-.795-1.468-1.761-1.638-2.052-.17-.29-.017-.449.095-.664.1-.215.421-.55.563-.824.14-.275.191-.479.286-.683.095-.205.048-.387-.024-.543-.072-.158-.665-1.597-.912-2.18-.247-.585-.494-.495-.665-.495-.171 0-.363-.024-.555-.024-.19 0-.494.072-.754.346-.26.275-.989.96-.989 2.333 0 1.373 1.018 2.697 1.169 2.871.15.176 1.996 3.092 4.83 4.218 2.834 1.127 3.424.908 4.032.842.607-.066 1.996-.816 2.277-1.52.28-.703.28-1.291.19-1.475-.095-.183-.26-.29-.556-.437z"/>
-              </svg>
-              WhatsApp ile İletişime Geç
-            </a>
+            {/* WhatsApp İletişim Butonu - Yeni Kutu İçinde */}
+            <div className="bg-green-50 p-6 rounded-xl shadow-inner border border-green-200 mt-6">
+              <p className="text-gray-800 text-lg font-semibold mb-3">
+                Herhangi bir sorunuz varsa veya **raporu göremiyorsanız**, lütfen bize WhatsApp üzerinden ulaşmaktan çekinmeyin. Size yardımcı olmak için buradayız! 👇
+              </p>
+              <a
+                href={`https://wa.me/${metriq360Info.contactNumber.replace(/\s/g, '')}?text=Merhaba,%20bilgi%20almak%20istiyorum.`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400 mt-2"
+              >
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.611-3.924-1.611-6.223 0-6.814 5.254-12.385 11.758-12.385 3.327 0 6.402 1.501 8.654 3.684 2.254 2.183 3.491 5.006 3.491 8.016 0 6.814-5.254 12.385-11.758 12.385-1.927 0-3.805-.443-5.49-1.218l-6.22 1.621zm10.748-23.363c-5.918 0-10.748 4.743-10.748 10.598 0 2.052.573 3.993 1.543 5.736l-1.054 3.864 3.957-1.03c1.677.925 3.627 1.458 5.679 1.458 5.918 0 10.748-4.743 10.748-10.598s-4.83-10.598-10.748-10.598zm5.556 12.162c-.096 0-.665-.306-.925-.407-.26-.1-.6-.151-.861.101-.26.251-.762.909-.933 1.092-.17.184-.341.207-.636.082-.295-.126-1.25-.461-2.38-1.474-.88-.795-1.468-1.761-1.638-2.052-.17-.29-.017-.449.095-.664.1-.215.421-.55.563-.824.14-.275.191-.479.286-.683.095-.205.048-.387-.024-.543-.072-.158-.665-1.597-.912-2.18-.247-.585-.494-.495-.665-.495-.171 0-.363-.024-.555-.024-.19 0-.494.072-.754.346-.26.275-.989.96-.989 2.333 0 1.373 1.018 2.697 1.169 2.871.15.176 1.996 3.092 4.83 4.218 2.834 1.127 3.424.908 4.032.842.607-.066 1.996-.816 2.277-1.52.28-.703.28-1.291.19-1.475-.095-.183-.26-.29-.556-.437z"/>
+                </svg>
+                WhatsApp ile İletişime Geç
+              </a>
+            </div>
           </div>
         )}
       </div>
