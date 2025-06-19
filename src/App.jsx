@@ -5,27 +5,27 @@ import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged }
 import { getFirestore, collection, addDoc, doc, setDoc, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import ReactMarkdown from 'react-markdown'; // react-markdown kütüphanesi eklendi
 
-// Firebase ve Uygulama ID'si için global değişkenler (Canvas tarafından sağlanır)
-// Yerel geliştirme ortamında bu değişkenler tanımsız olacağundan, varsayılan/dummy değerler atanmıştır.
-// Canlı ortamda (Netlify, Firebase Hosting vb.) Canvas veya dağıtım platformu gerçek değerleri sağlayacaktır.
+// Firebase and App ID global variables (provided by Canvas)
+// For local development, these variables will be undefined, so default/dummy values are assigned.
+// In a live environment (Netlify, Firebase Hosting, etc.), Canvas or the deployment platform will provide the actual values.
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 const firebaseConfig = typeof __firebase_config !== 'undefined'
   ? JSON.parse(__firebase_config)
   : {
-      apiKey: "AIzaSyC-dummy-local-api-key", // Bu bir yer tutucudur, gerçek Firebase API anahtarınız değildir.
-      authDomain: "your-project-id.firebaseapp.com", // Yerel test için dummy değer
-      projectId: "your-project-id", // Yerel test için dummy değer
+      apiKey: "AIzaSyC-dummy-local-api-key", // This is a placeholder, not your actual Firebase API key.
+      authDomain: "your-project-id.firebaseapp.com", // Dummy value for local testing
+      projectId: "your-project-id", // Dummy value for local testing
       storageBucket: "your-project-id.appspot.com",
       messagingSenderId: "123456789012",
       appId: "1:123456789012:web:abcdef1234567890abcdef",
-      measurementId: "G-XXXXXXXXXX" // Yerel test için dummy değer
+      measurementId: "G-XXXXXXXXXX" // Dummy value for local testing
     };
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-// Test soruları ve bölüm başlıkları
-// Bu veriler artık Netlify Function içinde de kullanılacak.
+// Test questions and section titles
+// This data will also be used within the Netlify Function.
 const allQuestions = [
-  // Bölüm 1: Sosyal Medya Yönetimi
+  // Section 1: Social Media Management
   { id: 'q1_1', section: 1, text: 'Sosyal medya hesaplarınızda ne sıklıkta paylaşım yapıyorsunuz?' },
   { id: 'q1_2', section: 1, text: 'Her platform için ayrı bir strateji uyguluyor musunuz?' },
   { id: 'q1_3', section: 1, text: 'Takipçi sayınız son 6 ayda istikrarlı bir şekilde arttı mı?' },
@@ -37,7 +37,7 @@ const allQuestions = [
   { id: 'q1_9', section: 1, text: 'Rakiplerinizin sosyal medya stratejilerini analiz ediyor musunuz?' },
   { id: 'q1_10', section: 1, text: 'Sosyal medya için dış kaynak ya da ajans desteği alıyor musunuz?' },
 
-  // Bölüm 2: Yerel SEO ve Google Benim İşletmem
+  // Section 2: Local SEO and Google My Business
   { id: 'q2_1', section: 2, text: 'Google Benim İşletmem (GBP) profiliniz var mı?' },
   { id: 'q2_2', section: 2, text: 'GBP profilinizde adres, telefon ve açık saatler eksiksiz mi?' },
   { id: 'q2_3', section: 2, text: 'GBP üzerinde sık sık içerik (fotoğraf, gönderi) paylaşıyor musunuz?' },
@@ -49,7 +49,7 @@ const allQuestions = [
   { id: 'q2_9', section: 2, text: 'GBP verilerini (gösterim, tıklama vs.) analiz ediyor musunuz?' },
   { id: 'q2_10', section: 2, text: 'Yerel anahtar kelimelere yönelik stratejiniz var mı?' },
 
-  // Bölüm 3: Reklam ve Kampanya Yönetimi
+  // Section 3: Advertising and Campaign Management
   { id: 'q3_1', section: 3, text: 'Meta (Facebook/Instagram) reklamları yürütüyor musunuz?' },
   { id: 'q3_2', section: 3, text: 'Google Ads kampanyaları aktif mi?' },
   { id: 'q3_3', section: 3, text: 'Hedef kitle tanımlarınız net mi?' },
@@ -61,7 +61,7 @@ const allQuestions = [
   { id: 'q3_9', section: 3, text: 'Dönüşüm takibi yapabiliyor musunuz (pixel, GA)?' },
   { id: 'q3_10', section: 3, text: 'Reklam performans raporlarını haftalık/aylık inceliyor musunuz?' },
 
-  // Bölüm 4: İçerik Pazarlaması
+  // Section 4: Content Marketing
   { id: 'q4_1', section: 4, text: 'Web sitenizde blog içerikleri yayınlıyor musunuz?' },
   { id: 'q4_2', section: 4, text: 'İçerikleriniz belirli bir stratejiye göre mı hazırlanıyor?' },
   { id: 'q4_3', section: 4, text: 'İçeriklerinizin hedef kitlenizin sorunlarına çözüm sunduğunu düşünüyor musunuz?' },
@@ -73,20 +73,20 @@ const allQuestions = [
   { id: 'q4_9', section: 4, text: 'Blog yazılarında görsel, infografik gibi unsurlar kullanıyor musunuz?' },
   { id: 'q4_10', section: 4, text: 'İçerik üretimi için profesyonel destek alıyor musunuz?' },
 
-  // Bölüm 5: Pazarlama Araçları ve Otomasyon
+  // Section 5: Marketing Tools and Automation
   { id: 'q5_1', section: 5, text: 'Hangi pazarlama otomasyon araçlarını kullanıyorsunuz?' },
   { id: 'q5_2', section: 5, text: 'E-posta pazarlaması yapıyor musunuz?' },
   { id: 'q5_3', section: 5, text: 'E-posta listenizi segmentlere ayırıyor musunuz?' },
   { id: 'q5_4', section: 5, text: 'Google Analytics veya benzeri araçlarla sitenizi analiz ediyor musunuz?' },
   { id: 'q5_5', section: 5, text: 'Ziyaretçi davranışlarını analiz etmek için bir sisteminiz var mı?' },
   { id: 'q5_6', section: 5, text: 'Sosyal medya zamanlayıcı araçlar (Buffer, Meta Planner vb.) kullanıyor musunuz?' },
-  { id: 'q5_7', section: 5, text: 'CRM veya müşteri yönetim sistemi kullanıyor musunuz?' }, // '데이' kaldırıldı
+  { id: 'q5_7', section: 5, text: 'CRM veya müşteri yönetim sistemi kullanıyor musunuz?' },
   { id: 'q5_8', section: 5, text: 'Pazarlama performansınızı raporlayan otomatik sistemler var mı?' },
   { id: 'q5_9', section: 5, text: 'Online formlarınızdan gelen verileri merkezi bir yerde topluyor musunuz?' },
   { id: 'q5_10', section: 5, text: 'Dijital pazarlama süreçlerinin tümünü bir sistem dahilinde takip ediyor musunuz?' },
 ];
 
-// Metriq360 Paket Bilgileri ve URL'ler (App.jsx'ten kopyalandı)
+// Metriq360 Package Information and URLs
 const metriq360Info = {
   websiteUrl: 'https://www.metriq360.com',
   contactEmail: 'bilgi@metriq360.com',
@@ -115,18 +115,18 @@ function App() {
   const [currentStep, setCurrentStep] = useState('form'); // 'form', 'quiz-select', 'quiz', 'results'
   const [selectedSections, setSelectedSections] = useState([]); // Array to hold multiple selected sections
   const [answers, setAnswers] = useState({});
-  const [overallScore, setOverallScore] = useState(0); // Genel puan
-  const [overallMaxScore, setOverallMaxScore] = useState(0); // Genel maksimum puan
+  const [overallScore, setOverallScore] = useState(0); // Overall score
+  const [overallMaxScore, setOverallMaxScore] = useState(0); // Overall maximum score
   const [shortAdvice, setShortAdvice] = useState('');
-  const [sectionScores, setSectionScores] = useState({}); // Her bölüm için puan
-  const [sectionMaxScores, setSectionMaxScores] = useState({}); // Her bölüm için maksimum puan
+  const [sectionScores, setSectionScores] = useState({}); // Score for each section
+  const [sectionMaxScores, setSectionMaxScores] = useState({}); // Maximum score for each section
   const [reportLoading, setReportLoading] = useState(false);
   const [reportData, setReportData] = useState('');
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Firebase Başlatma ve Kimlik Doğrulama
+  // Firebase Initialization and Authentication
   useEffect(() => {
     try {
       const app = initializeApp(firebaseConfig);
@@ -203,7 +203,7 @@ function App() {
     }));
   };
 
-  // Puanları hem genel hem de bölüm bazında hesaplayan fonksiyon
+  // Function to calculate scores for both overall and per section
   const calculateScore = () => {
     let totalScore = 0;
     let totalMaxScore = 0;
@@ -239,23 +239,19 @@ function App() {
     }
   };
 
-  // generateShortAdvice ve generateDetailedReportAndSendEmails fonksiyonları kaldırıldı.
-  // Bu fonksiyonların işlevselliği artık Netlify Function içinde olacak.
-  // Sadece Netlify Function'a çağrı yapan tek bir fonksiyon kalacak.
-
   const handleSubmitQuiz = async () => {
     const { totalScore, totalMaxScore, sectionScores, sectionMaxScores } = calculateScore();
-    setOverallScore(totalScore); // Genel puanı ayarla
-    setOverallMaxScore(totalMaxScore); // Genel maksimum puanı ayarla
-    setSectionScores(sectionScores); // Bölüm puanlarını ayarla
-    setSectionMaxScores(sectionMaxScores); // Bölüm maksimum puanlarını ayarla
+    setOverallScore(totalScore); // Set overall score
+    setOverallMaxScore(totalMaxScore); // Set overall maximum score
+    setSectionScores(sectionScores); // Set section scores
+    setSectionMaxScores(sectionMaxScores); // Set section maximum scores
     setCurrentStep('results');
     setReportLoading(true);
     setReportData('Detaylı rapor oluşturuluyor ve e-posta gönderiliyor...');
 
 
     try {
-      // Netlify Function'a API çağrısı
+      // API call to Netlify Function
       const response = await fetch('/.netlify/functions/send-email', {
         method: 'POST',
         headers: {
@@ -266,19 +262,23 @@ function App() {
           quizAnswers: answers,
           userInfo: user,
           selectedSections: selectedSections,
-          allQuestions: allQuestions, // Soruları da gönderiyoruz
-          metriq360Info: metriq360Info // Metriq360 bilgilerini de gönderiyoruz
+          allQuestions: allQuestions, // Sending questions as well
+          metriq360Info: metriq360Info // Sending Metriq360 info as well
         }),
       });
 
       const result = await response.json();
+      console.log("Netlify Function'dan dönen tüm sonuç:", result); // *** NEW LOG ***
+      console.log("Dönen shortAdvice:", result.shortAdvice);      // *** NEW LOG ***
+      console.log("Dönen detailedReport:", result.detailedReport); // *** NEW LOG ***
+
 
       if (response.ok) {
         setShortAdvice(result.shortAdvice);
         setReportData(result.detailedReport);
-        console.log("Netlify Function'dan başarıyla yanıt alındı.");
+        console.log("Response successfully received from Netlify Function.");
 
-        // Firestore'a kaydetme (bu kısım App.jsx'te kalabilir)
+        // Saving to Firestore (this part can remain in App.jsx)
         if (db && userId) {
             const userQuizzesCollection = collection(db, `artifacts/${appId}/users/${userId}/quizzes`);
             await addDoc(userQuizzesCollection, {
@@ -308,20 +308,20 @@ function App() {
                 overallMaxScore: totalMaxScore,
                 detailedReportSnippet: result.detailedReport.substring(0, 500) + '...'
             });
-            console.log("Kullanıcı ve rapor verileri Firestore'a başarıyla kaydedildi.");
+            console.log("User and report data successfully saved to Firestore.");
         } else {
-            console.error("Firestore veya kullanıcı kimliği mevcut değil, veriler kaydedilemedi.");
+            console.error("Firestore or user ID not available, data could not be saved.");
         }
 
       } else {
         setError(result.error || 'Rapor oluşturma veya e-posta göndermede hata oluştu.');
         setReportData('Rapor oluşturulamadı veya yüklenemedi. Lütfen tekrar deneyin.');
-        console.error("Netlify Function Hatası:", result.error);
+        console.error("Netlify Function Error:", result.error);
       }
     } catch (apiError) {
       setError('Bağlantı hatası: Rapor oluşturulurken bir sorun oluştu.');
       setReportData('Rapor oluşturulamadı veya yüklenemedi. Lütfen tekrar deneyin.');
-      console.error("Netlify Function çağrı hatası:", apiError);
+      console.error("Netlify Function call error:", apiError);
     } finally {
       setReportLoading(false);
     }
@@ -335,7 +335,7 @@ function App() {
     );
   }
 
-  // Genel puanı 100 üzerinden göstermek için hesaplama
+  // Calculate overall score out of 100 for display
   const displayOverallScoreOutOf100 = overallMaxScore > 0 ? ((overallScore / overallMaxScore) * 100).toFixed(0) : 0;
 
   return (
@@ -453,7 +453,7 @@ function App() {
                   Bölüm {sectionNum}: {getSectionTitle(sectionNum)}
                 </h3>
                 {allQuestions
-                  .filter(q => q.section === sectionNum)
+                  .filter(q => selectedSections.includes(q.section))
                   .map((q, index) => (
                     <div key={q.id} className="bg-gray-50 p-5 rounded-lg shadow-sm border border-gray-200 mb-4">
                       <p className="text-lg font-medium text-gray-800 mb-3">Soru {index + 1}. {q.text}</p>
@@ -505,12 +505,12 @@ function App() {
           <div className="space-y-6 text-center">
             <h2 className="text-3xl font-bold text-blue-700 mb-4">Test Sonuçlarınız</h2>
 
-            {/* Genel Puanlama - 100 üzerinden gösterim */}
+            {/* Overall Score - displayed out of 100 */}
             <p className="text-2xl text-gray-800">
               Genel Puanınız: <span className="font-extrabold text-blue-600">{displayOverallScoreOutOf100}</span> / 100
             </p>
 
-            {/* Bölüm Bazlı Puanlama */}
+            {/* Section-based Scoring */}
             {selectedSections.length > 1 && (
               <div className="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200 mt-6 text-left">
                 <h3 className="text-xl font-semibold text-gray-800 mb-4 text-center">Bölüm Bazlı Puanlar</h3>
@@ -547,8 +547,9 @@ function App() {
               )}
             </div>
 
+            {/* Kullanıcıya gösterilecek yeni mesaj */}
             <p className="text-gray-600 mt-6">
-              Detaylı raporunuz kısa süre içinde e-posta adresinize ({user.email}) gönderilecektir.
+              Harika bir iş çıkardınız! 🚀 Dijital pazarlama testinizi tamamladığınız için teşekkür ederiz. Şimdi, dijital potansiyelinizi en üst düzeye çıkarmak için size özel detaylı bir rapor hazırlıyoruz. Bu kapsamlı analiz, **en kısa sürede e-posta adresinize (${user.email}) gönderilecektir.** Dijital yolculuğunuzda size rehberlik etmek için sabırsızlanıyoruz! ✨
             </p>
 
             <button
@@ -570,7 +571,7 @@ function App() {
               Yeni Bir Test Yap
             </button>
 
-            {/* WhatsApp İletişim Butonu */}
+            {/* WhatsApp Contact Button */}
             <p className="text-gray-600 mt-6">
               Herhangi bir soru veya aklınıza takılan bir şey olursa lütfen aşağıdaki butondan bize ulaşın.
             </p>
