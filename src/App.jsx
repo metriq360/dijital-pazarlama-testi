@@ -59,7 +59,7 @@ function App() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     
-    // YENİDEN EKLENEN RAPOR DURUMLARI
+    // Rapor durumları
     const [reportLoading, setReportLoading] = useState(false);
     const [shortAdvice, setShortAdvice] = useState('');
     const [reportData, setReportData] = useState('');
@@ -148,22 +148,22 @@ function App() {
         return titles[sectionNum] || '';
     };
 
-    // YENİDEN YAPILANDIRILMIŞ RAPOR VE E-POSTA İSTEĞİ
     const processQuizResults = async (scores, quizAnswers, userInfo) => {
         setReportLoading(true);
         setShortAdvice('');
         setReportData('Rapor ve tavsiyeler oluşturuluyor...');
+        setError(''); 
         
         try {
-            // Arka plan fonksiyonuna basit bir göreceli yol ile istek gönder
-            const response = await fetch('/.netlify/functions/send-email', {
+            const functionUrl = new URL('/.netlify/functions/send-email', window.location.origin);
+
+            const response = await fetch(functionUrl.href, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     scores,
                     quizAnswers,
                     userInfo,
-                    allQuestions // Arka planın sorulara erişebilmesi için gönder
                 })
             });
 
@@ -176,11 +176,9 @@ function App() {
 
             const result = await response.json();
             
-            // Sonuçları state'e kaydet
             setShortAdvice(result.shortAdvice);
             setReportData(result.detailedReport);
 
-            // Firestore'a kaydetme
             if (db && userId) {
                 const dataToSave = {
                     userId, timestamp: new Date(), userInfo, selectedSections, answers,
@@ -225,7 +223,7 @@ function App() {
                 {currentStep === 'form' && (
                     <>
                         <div className="text-center mb-6">
-                             <h1 className="text-4xl font-extrabold text-blue-800 mb-3 tracking-tight">🚀 Dijital Pazarlama Sağlık Testi’ne Hoş Geldiniz!</h1>
+                             <h1 className="text-4xl font-extrabold text-center text-blue-800 mb-3 tracking-tight">🚀 Dijital Pazarlama Sağlık Testi’ne Hoş Geldiniz!</h1>
                              <p className="text-lg text-gray-600">İşletmenizin dijital gücünü test etmek için birkaç bilgi yeterli. Sonra başlayalım!</p>
                         </div>
                         <form onSubmit={handleUserFormSubmit} className="space-y-6">
