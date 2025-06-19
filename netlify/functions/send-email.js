@@ -1,15 +1,11 @@
 import sgMail from '@sendgrid/mail';
 // OpenAI kütüphanesi artık kullanılmayacağı için kaldırıldı
-// import OpenAI from 'openai'; 
 
 // SendGrid API anahtarını ortam değişkenlerinden güvenli bir şekilde alın
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 // Gemini API anahtarını ortam değişkeninden alın
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Gemini API anahtarı
-
-// Eğer Gemini API'ye doğrudan çağrı yapacaksak, OpenAI istemcisini başlatmaya gerek yok.
-// const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 
 // Soru bankası (App.jsx'ten kopyalandı)
@@ -30,7 +26,7 @@ const allQuestions = [
   { id: 'q2_1', section: 2, text: 'Google Benim İşletmem (GBP) profiliniz var mı?' },
   { id: 'q2_2', section: 2, text: 'GBP profilinizde adres, telefon ve açık saatler eksiksiz mi?' },
   { id: 'q2_3', section: 2, text: 'GBP üzerinde sık sık içerik (fotoğraf, gönderi) paylaşıyor musunuz?' },
-  { id: 'q2_4', section: 2, text: 'Harita konumunuz doğru mu?' },
+  { id: 'q2_4', section: 2, text: 'Harita konumunuz doğru mı?' },
   { id: 'q2_5', section: 2, text: 'Müşterilerden düzenli olarak Google yorumu alıyor musunuz?' },
   { id: 'q2_6', section: 2, text: 'Gelen yorumlara yanıt veriyor musunuz?' },
   { id: 'q2_7', section: 2, text: 'İşletmeniz yerel dizinlerde ve haritalarda listelenmiş mi?' },
@@ -274,7 +270,7 @@ Genel Puan: ${overallPercentageScore} / 100
 
     const msgToUser = {
       to: userInfo.email,
-      from: 'iletisim@metriq360.com', // Gönderen e-posta adresi
+      from: metriq360Info.contactEmail, // Gönderen e-posta adresi güncellendi
       subject: `🚀 Dijital Pazarlama Raporunuz, ${nameSafe}!`,
       html: `
         <h2>Merhaba ${nameSafe},</h2>
@@ -287,7 +283,7 @@ Genel Puan: ${overallPercentageScore} / 100
 
     const msgToAdmin = {
       to: metriq360Info.contactEmail, // Site sahibinin e-posta adresi
-      from: 'iletisim@metriq360.com', // Gönderen e-posta adresi
+      from: metriq360Info.contactEmail, // Gönderen e-posta adresi güncellendi
       subject: `Yeni Test: ${nameSafe} ${surnameSafe}`,
       html: `
         <h2>Yeni test tamamlandı</h2>
