@@ -189,70 +189,22 @@ export const handler = async (event) => {
     const totalNumberOfTests = selectedSections.length;
     const overallPercentageScore = totalMaxScore > 0 ? ((totalScore / totalMaxScore) * 100).toFixed(0) : 0;
 
-    // Detaylı rapor promptu (Gemini API için)
-    const detailedReportPrompt = `Sen METRIQ360 Dijital Pazarlama Ajansı’nın strateji uzmanısın. Aşağıda bir işletmenin çözdüğü dijital pazarlama testlerinin sonuçları verilmiştir. Test sayısı 1 ila 5 arasında olabilir. Senin görevin, bu testlerin sonuçlarını analiz ederek kullanıcıya özel, güçlü, stratejik ve motive edici bir dijital gelişim raporu oluşturmaktır. Değerlendirme yaparken yaratıcı ol, geniş düşün, amacın insanları aydınlatmak, öneriler sunmak, tavsiyeler vermek ve metriq360 ile iletişime teşvik etmek, onlara uygun hizmetlere yönlendirmek olacaktır.
-Paket ve Hizmetler: (Uygun durumlarda raporun içeriği ve gidişatına göre bu hizmetlerden öneriler ver yönlendir, ama satış gibi değil ,dostça bir öneri gibi olsun)
-- IQ Yerel Güç-Yerel SEO & Google My Business Odaklı
-- IQ Sosyal Büyüme-Meta (Facebook/Instagram) & LinkedIn Odaklı
-- IQ Reklam Master-Meta & Google Reklam Yönetimi
-- IQ Süper İkili-İki Paket Bir Arada - Esnek Seçimli
-- IQ Zirve Paketi-Tüm Hizmetler Bir Arada - Full Digital Strateji
-  
+    // Detaylı rapor promptu (Gemini API için) - Kısaltıldı
+    const detailedReportPrompt = `Sen METRIQ360 Dijital Pazarlama Ajansı’nın strateji uzmanısın. Aşağıda bir işletmenin çözdüğü dijital pazarlama testlerinin sonuçları verilmiştir. Raporu 300 kelimeyi geçmeyecek şekilde, Markdown formatında ve Türkçe olarak oluştur. Amacın kullanıcıya net bir genel değerlendirme, ana tavsiyeler ve uygun METRIQ360 paket önerileri sunmaktır. Gereksiz detaylardan kaçın. Motive edici ve dostça bir ton kullan.
+    
 📌 Raporun yapısı şu şekilde olmalı:
-  
-1. **Giriş Bölümü**
-    - Kullanıcının adıyla hitap et.
-    - METRIQ360’ın bu raporu neden sunduğunu açıkla.
-    - Kaç testin çözüldüğünü ve bu testlerin dijital varlıkları nasıl ölçtüğünü kısaca belirt.
-    - Raporun sonunda kullanıcıya kazandıracağı değeri anlat.
-    - Ton: Profesyonel, motive edici, dostça.
-  
-2. **Genel Değerlendirme (${totalNumberOfTests} test çözüldü)**
-    - ${totalNumberOfTests} test çözüldüyse, testler arası ilişkilere dikkat çek.
-    - Her testin öne çıkan güçlü ve zayıf yönlerini açıklayıcı ama özet bir şekilde yaz.
-    - Gereksiz detay verme, stratejik bakış açısı sun.
-    - Test sonuçları detayları:
-${sectionDetails}
-  
-3. **Test Bazlı Tavsiyeler (Varsa her test için ayrı)**
-    - Her test için 2-3 maddelik uygulanabilir öneriler ver.
-    - Dili sade, doğrudan ve cesaretlendirici olsun.
-    - Gerekiyorsa teknik bilgi ver ama yalın anlat.
-  
-4. **Genel Dijital Strateji Önerisi**
-    - Testlerin tamamı üzerinden, firmanın dijitaldeki büyüme potansiyelini ve odaklanması gereken alanları belirt.
-    - Yani bütünün fotoğrafını çek: Bu işletme nerede duruyor, dijitalde ne kadar gelişebilir, öncelikler ne olmalı?
-  
-5. **Uygun METRIQ360 Paket Önerisi**
-    - Test sonuçlarına göre 1 veya 2 hizmet paketini öner.
-    - Neden bu paketi önerdiğini kısa ama net açıklamalarla yaz.
-  
-6. **Kapanış**
-    - Kullanıcıyı dijital potansiyelini gerçekleştirmesi için cesaretlendir.
-    - METRIQ360’ın “IQ360 Sistemi” ve “Turuncu Güç” yaklaşımına kısaca değin.
-    - İletişime geçmeye davet et.
-  
-7. **İletişim Bilgileri** (aynen yaz):
-    🌐 ${metriq360Info.websiteUrl}
-    ✉️ ${metriq360Info.contactEmail}
-    📞 ${metriq360Info.contactNumber}
-  
-  
-🧠 Kurallar:
-- Rapor çok şık ve modern görünsün, önemli yerler vurgulansın, başlıklar belirgin olsun, rapor düzeni çok düzgün olsun
-- Skorları teker teker sıralama.
-- Emojilerle yazıları destekle ama abartma 
-- Her testi ayrı parça gibi değil, stratejik bütün olarak yorumla.
-- Sade, akıcı, danışman gibi yaz. Bilgiçlik taslama, satış kokusu olsun ama zorlama olmasın. Teşvik edici , motive edici davran.
-- Rapor bittiğinde kullanıcı, hem ne durumda olduğunu hem de ne yapması gerektiğini net şekilde anlamalı.
+1.  **Giriş Bölümü**: Kullanıcıya hitap et, raporun amacını ve ne fayda sağlayacağını kısaca anlat.
+2.  **Genel Değerlendirme**: Çözülen test sayısını belirt, öne çıkan güçlü ve zayıf yönleri özetle.
+    Test sonuçları detayları:
+    ${sectionDetails}
+3.  **Ana Tavsiyeler**: Tüm testler üzerinden, firmanın dijitalde odaklanması gereken en önemli 2-3 alanı ve uygulanabilir önerileri madde madde sun.
+4.  **Uygun METRIQ360 Paket Önerisi**: Test sonuçlarına göre en uygun 1-2 hizmet paketini (IQ Yerel Güç, IQ Sosyal Büyüme, IQ Reklam Master, IQ Süper İkili, IQ Zirve Paketi) ve nedenini kısaca açıkla.
+5.  **Kapanış ve İletişim**: Kullanıcıyı cesaretlendir, METRIQ360'ın farkına değin ve iletişime davet et. İletişim bilgilerini (web, e-posta, telefon) ekle.
 
 ---
-
 **Kullanıcı Bilgileri:**
 Ad: ${userInfo.name}
-Soyad: ${userInfo.surname}
 Sektör: ${userInfo.sector}
-E-posta: ${userInfo.email}
 
 **Test Sonuçları Özeti (100 üzerinden):**
 Genel Puan: ${overallPercentageScore} / 100
