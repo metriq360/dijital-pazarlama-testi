@@ -1,13 +1,16 @@
 import sgMail from '@sendgrid/mail';
-import OpenAI from 'openai'; // OpenAI API'si kullanılacağı için import edildi
+// OpenAI kütüphanesi artık kullanılmayacağı için kaldırıldı
+// import OpenAI from 'openai'; 
 
 // SendGrid API anahtarını ortam değişkenlerinden güvenli bir şekilde alın
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-// OpenAI istemcisini ortam değişkeninden alınan API anahtarı ile başlatın
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Gemini API anahtarını ortam değişkeninden alın
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Gemini API anahtarı
+
+// Eğer Gemini API'ye doğrudan çağrı yapacaksak, OpenAI istemcisini başlatmaya gerek yok.
+// const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
 
 // Soru bankası (App.jsx'ten kopyalandı)
 const allQuestions = [
@@ -121,26 +124,34 @@ export const handler = async (event) => {
     const { scores, quizAnswers, userInfo, selectedSections } = JSON.parse(event.body);
     const { totalScore, totalMaxScore, sectionScores, sectionMaxScores } = scores;
 
+    if (!GEMINI_API_KEY) {
+        throw new Error("Gemini API Key not found in environment variables.");
+    }
+
     const percentage = (totalScore / totalMaxScore) * 100;
     let performanceLevel = "orta";
     if (percentage < 40) performanceLevel = "geliştirilmesi gereken";
     else if (percentage >= 75) performanceLevel = "güçlü";
 
-    // Kısa tavsiye (OpenAI GPT-3.5 Turbo)
+    // Kısa tavsiye (Gemini API)
     let shortAdvice = "Tavsiye oluşturulamadı.";
     try {
-      const adviceResult = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [{
-          role: "user",
-          content: `Bir kullanıcı dijital pazarlama testinden 100 üzerinden ${Math.round(percentage)} puan aldı. Bu '${performanceLevel}' bir skordur. Tek cümlelik, motive edici ve aksiyona yönelik bir tavsiye ver. METRIQ360'ın IQ360 sistemiyle ilişkilendir ve iletişime yönlendir.`,
-        }],
-        max_tokens: 150,
-        temperature: 0.8,
+      const advicePrompt = `Bir kullanıcı dijital pazarlama testinden 100 üzerinden ${Math.round(percentage)} puan aldı. Bu '${performanceLevel}' bir skordur. Tek cümlelik, motive edici ve aksiyona yönelik bir tavsiye ver. METRIQ360'ın IQ360 sistemiyle ilişkilendir ve iletişime yönlendir.`;
+      
+      const adviceResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: advicePrompt }] }] })
       });
-      shortAdvice = adviceResult.choices?.[0]?.message?.content?.trim() || shortAdvice;
-    } catch (gptError) {
-      console.error("OpenAI Tavsiye Hatası:", gptError);
+      const adviceResult = await adviceResponse.json();
+
+      if (adviceResult.candidates && adviceResult.candidates.length > 0 && adviceResult.candidates[0].content && adviceResult.candidates[0].content.parts && adviceResult.candidates[0].content.parts.length > 0) {
+        shortAdvice = adviceResult.candidates[0].content.parts[0].text;
+      } else {
+        console.error("Gemini API'den kısa tavsiye alınırken beklenmeyen yanıt:", adviceResult);
+      }
+    } catch (geminiError) {
+      console.error("Gemini Kısa Tavsiye Hatası:", geminiError);
     }
 
     // Bölüm bazlı puanları ve güçlü/zayıf soruları rapora eklemek için formatlama
@@ -166,9 +177,8 @@ export const handler = async (event) => {
     const totalNumberOfTests = selectedSections.length;
     const overallPercentageScore = totalMaxScore > 0 ? ((totalScore / totalMaxScore) * 100).toFixed(0) : 0;
 
-
-    // GPT-4 ile detaylı rapor promptu
-    const prompt = `Sen METRIQ360 Dijital Pazarlama Ajansı’nın strateji uzmanısın. Aşağıda bir işletmenin çözdüğü dijital pazarlama testlerinin sonuçları verilmiştir. Test sayısı 1 ila 5 arasında olabilir. Senin görevin, bu testlerin sonuçlarını analiz ederek kullanıcıya özel, güçlü, stratejik ve motive edici bir dijital gelişim raporu oluşturmaktır. Değerlendirme yaparken yaratıcı ol, geniş düşün, amacın insanları aydınlatmak, öneriler sunmak, tavsiyeler vermek ve metriq360 ile iletişime teşvik etmek, onlara uygun hizmetlere yönlendirmek olacaktır.
+    // Detaylı rapor promptu (Gemini API için)
+    const detailedReportPrompt = `Sen METRIQ360 Dijital Pazarlama Ajansı’nın strateji uzmanısın. Aşağıda bir işletmenin çözdüğü dijital pazarlama testlerinin sonuçları verilmiştir. Test sayısı 1 ila 5 arasında olabilir. Senin görevin, bu testlerin sonuçlarını analiz ederek kullanıcıya özel, güçlü, stratejik ve motive edici bir dijital gelişim raporu oluşturmaktır. Değerlendirme yaparken yaratıcı ol, geniş düşün, amacın insanları aydınlatmak, öneriler sunmak, tavsiyeler vermek ve metriq360 ile iletişime teşvik etmek, onlara uygun hizmetlere yönlendirmek olacaktır.
 Paket ve Hizmetler: (Uygun durumlarda raporun içeriği ve gidişatına göre bu hizmetlerden öneriler ver yönlendir, ama satış gibi değil ,dostça bir öneri gibi olsun)
 - IQ Yerel Güç-Yerel SEO & Google My Business Odaklı
 - IQ Sosyal Büyüme-Meta (Facebook/Instagram) & LinkedIn Odaklı
@@ -239,14 +249,20 @@ Genel Puan: ${overallPercentageScore} / 100
 
     let detailedReport = "Rapor oluşturulamadı.";
     try {
-      const reportResult = await openai.chat.completions.create({
-        model: "gpt-4o", // Güçlü rapor için GPT-4o kullanıldı
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 2000, // Artırılmış token sınırı
+      const reportResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: detailedReportPrompt }] }] })
       });
-      detailedReport = reportResult.choices?.[0]?.message?.content || detailedReport;
-    } catch (gptError) {
-      console.error("OpenAI Rapor Hatası:", gptError);
+      const reportResult = await reportResponse.json();
+
+      if (reportResult.candidates && reportResult.candidates.length > 0 && reportResult.candidates[0].content && reportResult.candidates[0].content.parts && reportResult.candidates[0].content.parts.length > 0) {
+        detailedReport = reportResult.candidates[0].content.parts[0].text;
+      } else {
+        console.error("Gemini API'den detaylı rapor alınırken beklenmeyen yanıt:", reportResult);
+      }
+    } catch (geminiError) {
+      console.error("Gemini Detaylı Rapor Hatası:", geminiError);
       detailedReport = "Detaylı rapor oluşturulurken bir hata oluştu.";
     }
 
