@@ -4,7 +4,7 @@ import OpenAI from 'openai';
 // API anahtarları ortam değişkenlerinden güvenli alınır
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // Burada VITE_ olmamalı, fonksiyon ortamı
+  apiKey: process.env.OPENAI_API_KEY, // VITE_ olmamalı
 });
 
 // Basit HTML escape fonksiyonu (XSS koruması için)
@@ -15,8 +15,10 @@ const escapeHtml = (unsafe = "") => unsafe
   .replace(/"/g, "&quot;")
   .replace(/'/g, "&#039;");
 
-// Soru bankası (buraya senin sorular gelecek)
-const allQuestions = [/* ... */];
+// Soru bankası (örnek)
+const allQuestions = [
+  // ... sorular buraya gelecek ...
+];
 
 // Bölüm başlıkları
 const getSectionTitle = (sectionNum) => {
@@ -82,7 +84,7 @@ export const handler = async (event) => {
       return `**${title}**\n${answers}`;
     }).join('\n\n');
 
-    // GPT-4o ile detaylı rapor promptu
+    // GPT-4 ile detaylı rapor promptu
     const prompt = `Sen dijital pazarlama uzmanısın ve METRIQ360 için sektör odaklı raporlar yazıyorsun.
 
 Kullanıcı:
@@ -99,7 +101,7 @@ ${testResultsDetails}
     let detailedReport = "Rapor oluşturulamadı.";
     try {
       const reportResult = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 1500,
       });
@@ -109,7 +111,7 @@ ${testResultsDetails}
     }
 
     // Mail formatı
-    const reportHtml = detailedReport.replace(/\n/g, '<br>');
+    const reportHtml = escapeHtml(detailedReport).replace(/\n/g, '<br>');
     const nameSafe = escapeHtml(userInfo.name);
     const surnameSafe = escapeHtml(userInfo.surname);
     const sectorSafe = escapeHtml(userInfo.sector);
@@ -121,7 +123,7 @@ ${testResultsDetails}
       html: `
         <h2>Merhaba ${nameSafe},</h2>
         <p>Testi tamamladığınız için teşekkürler!</p>
-        <p><strong>Kısa Tavsiye:</strong> ${shortAdvice}</p>
+        <p><strong>Kısa Tavsiye:</strong> ${escapeHtml(shortAdvice)}</p>
         <hr>
         ${reportHtml}
       `
