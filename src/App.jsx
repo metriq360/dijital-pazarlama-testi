@@ -58,6 +58,12 @@ function App() {
     const [sectionMaxScores, setSectionMaxScores] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    
+    // YENİDEN EKLENEN RAPOR DURUMLARI
+    const [reportLoading, setReportLoading] = useState(false);
+    const [shortAdvice, setShortAdvice] = useState('');
+    const [reportData, setReportData] = useState('');
+
 
     useEffect(() => {
         try {
@@ -142,28 +148,59 @@ function App() {
         return titles[sectionNum] || '';
     };
 
-    // "ATEŞLE VE UNUT" FONKSİYONU
-    const triggerReportGeneration = async (scores, quizAnswers, userInfo) => {
+    // YENİDEN YAPILANDIRILMIŞ RAPOR VE E-POSTA İSTEĞİ
+    const processQuizResults = async (scores, quizAnswers, userInfo) => {
+        setReportLoading(true);
+        setShortAdvice('');
+        setReportData('Rapor ve tavsiyeler oluşturuluyor...');
+        
         try {
-            await fetch('/.netlify/functions/send-email', {
+            // Arka plan fonksiyonuna basit bir göreceli yol ile istek gönder
+            const response = await fetch('/.netlify/functions/send-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ scores, quizAnswers, userInfo })
+                body: JSON.stringify({
+                    scores,
+                    quizAnswers,
+                    userInfo,
+                    allQuestions // Arka planın sorulara erişebilmesi için gönder
+                })
             });
-            console.log("Rapor oluşturma ve e-posta gönderme isteği başarıyla gönderildi.");
 
-            // Firestore'a sadece test verilerini kaydet
-            if (db && userId) {
-                await addDoc(collection(db, `artifacts/${appId}/users/${userId}/quizzes`), {
-                    userId, timestamp: new Date(), userInfo, selectedSections, answers, ...scores,
-                });
+            const contentType = response.headers.get("content-type");
+            if (!response.ok || !contentType || !contentType.includes("application/json")) {
+                const errorText = await response.text();
+                console.error("Netlify fonksiyonundan beklenmedik yanıt:", errorText);
+                throw new Error("Rapor oluşturulurken bir sunucu hatası oluştu. Lütfen Netlify loglarını kontrol edin.");
             }
+
+            const result = await response.json();
+            
+            // Sonuçları state'e kaydet
+            setShortAdvice(result.shortAdvice);
+            setReportData(result.detailedReport);
+
+            // Firestore'a kaydetme
+            if (db && userId) {
+                const dataToSave = {
+                    userId, timestamp: new Date(), userInfo, selectedSections, answers,
+                    ...scores,
+                    shortAdvice: result.shortAdvice,
+                    detailedReport: result.detailedReport
+                };
+                await addDoc(collection(db, `artifacts/${appId}/users/${userId}/quizzes`), dataToSave);
+            }
+
         } catch (err) {
-            console.error("Rapor oluşturma isteği gönderilirken hata oluştu:", err);
+            console.error("Rapor işleme hatası:", err);
+            setError(err.message);
+            setReportData(''); 
+        } finally {
+            setReportLoading(false);
         }
     };
     
-    const handleSubmitQuiz = () => {
+    const handleSubmitQuiz = async () => {
         const scores = calculateScore();
         setOverallScore(scores.totalScore);
         setOverallMaxScore(scores.totalMaxScore);
@@ -171,8 +208,7 @@ function App() {
         setSectionMaxScores(scores.sectionMaxScores);
         setCurrentStep('results');
         
-        // Arka plana isteği gönder ve sonucu bekleme
-        triggerReportGeneration(scores, answers, user);
+        await processQuizResults(scores, answers, user);
     };
 
     if (loading) {
@@ -252,12 +288,29 @@ function App() {
                           </div>
                         )}
                         
-                        <div className="bg-purple-50 p-6 rounded-xl shadow-inner border border-purple-200 mt-6 text-center">
-                            <h3 className="text-xl font-semibold text-purple-800 mb-3">Tebrikler, Testi Tamamladınız!</h3>
-                            <div className="flex flex-col items-center justify-center">
-                                <p className="mt-4 text-gray-600">Detaylı raporunuz ve size özel tavsiyeler e-posta adresinize gönderiliyor. Lütfen gelen kutunuzu kontrol edin.</p>
-                            </div>
+                        <div className="bg-blue-50 p-6 rounded-xl shadow-inner border border-blue-200">
+                            <h3 className="text-xl font-semibold text-blue-800 mb-3">Kısa Tavsiye</h3>
+                            {reportLoading ? <p className="text-gray-600">Oluşturuluyor...</p> : <p className="text-gray-700">{shortAdvice}</p>}
                         </div>
+
+                        <div className="bg-purple-50 p-6 rounded-xl shadow-inner border border-purple-200 mt-6">
+                            <h3 className="text-xl font-semibold text-purple-800 mb-3">Detaylı Rapor ve Strateji</h3>
+                            {reportLoading ? (
+                                <div className="flex flex-col items-center justify-center">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+                                    <p className="mt-4 text-gray-600">Rapor ve tavsiyeler oluşturuluyor...</p>
+                                </div>
+                            ) : (
+                                <div className="text-left text-gray-700 prose max-w-none">
+                                    <ReactMarkdown children={reportData} />
+                                </div>
+                            )}
+                        </div>
+                        
+                        {!reportLoading && <div className="text-gray-600 mt-6 bg-green-50 border border-green-200 p-4 rounded-lg">
+                            <p className="font-bold text-lg">📩 Detaylı raporun yolda!</p>
+                            <p>Kısa süre içinde test sonuçlarını ve özel tavsiyelerini içeren dijital raporun, e-posta adresine ({user.email}) gönderilecek. Gelen kutunu kontrol etmeyi unutma!</p>
+                        </div>}
 
                         <WhatsAppButton />
 
@@ -270,4 +323,3 @@ function App() {
 }
 
 export default App;
-
