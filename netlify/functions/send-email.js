@@ -74,7 +74,7 @@ const allQuestions = [
 // Metriq360 Paket Bilgileri ve URL'ler (App.jsx'ten kopyalandı)
 const metriq360Info = {
   websiteUrl: 'https://www.metriq360.com',
-  contactEmail: 'bilgi@metriq360.com', // E-posta adresi güncellendi
+  contactEmail: 'bilgi@metriq360.com', 
   contactNumber: '+90 537 948 48 68',
   services: [
     "SEO Danışmanlığı", "İçerik Pazarlaması", "Sosyal Medya Yönetimi", "Meta & Google Reklam Yönetimi",
@@ -189,18 +189,40 @@ export const handler = async (event) => {
     const totalNumberOfTests = selectedSections.length;
     const overallPercentageScore = totalMaxScore > 0 ? ((totalScore / totalMaxScore) * 100).toFixed(0) : 0;
 
-    // Detaylı rapor promptu (Gemini API için) - Kısaltıldı
-    const detailedReportPrompt = `Sen METRIQ360 Dijital Pazarlama Ajansı’nın strateji uzmanısın. Aşağıda bir işletmenin çözdüğü dijital pazarlama testlerinin sonuçları verilmiştir. Raporu 300 kelimeyi geçmeyecek şekilde, Markdown formatında ve Türkçe olarak oluştur. Amacın kullanıcıya net bir genel değerlendirme, ana tavsiyeler ve uygun METRIQ360 paket önerileri sunmaktır. Gereksiz detaylardan kaçın. Motive edici ve dostça bir ton kullan.
-    
+    // Detaylı rapor promptu (Gemini API için) - Görsel iyileştirmeler eklendi
+    const detailedReportPrompt = `Sen METRIQ360 Dijital Pazarlama Ajansı’nın strateji uzmanısın. Aşağıda bir işletmenin çözdüğü dijital pazarlama testlerinin sonuçları verilmiştir. Raporu 300 kelimeyi geçmeyecek şekilde, **Markdown formatında (başlıklar, kalın metinler, listeler, emojiler ve yatay çizgiler kullanarak)** ve Türkçe olarak oluştur. Amacın kullanıcıya net bir genel değerlendirme, ana tavsiyeler ve uygun METRIQ360 paket önerileri sunmaktır. Gereksiz detaylardan kaçın. Motive edici ve dostça bir ton kullan. **Raporun görsel olarak şık ve modern görünmesini sağla.**
+
 📌 Raporun yapısı şu şekilde olmalı:
-1.  **Giriş Bölümü**: Kullanıcıya hitap et, raporun amacını ve ne fayda sağlayacağını kısaca anlat.
-2.  **Genel Değerlendirme**: Çözülen test sayısını belirt, öne çıkan güçlü ve zayıf yönleri özetle.
-    Test sonuçları detayları:
+---
+1.  **🚀 Giriş Bölümü**
+    - Kullanıcının adıyla hitap et.
+    - METRIQ360’ın bu raporu neden sunduğunu açıkla.
+    - Kaç testin çözüldüğünü ve bu testlerin dijital varlıkları nasıl ölçtüğünü kısaca belirt.
+    - Raporun sonunda kullanıcıya kazandıracağı değeri anlat.
+    - Ton: Profesyonel, motive edici, dostça.
+---
+2.  **📊 Genel Değerlendirme (${totalNumberOfTests} Test Çözüldü)**
+    - ${totalNumberOfTests} test çözüldüyse, testler arası ilişkilere dikkat çek.
+    - Her testin öne çıkan güçlü ve zayıf yönlerini açıklayıcı ama özet bir şekilde yaz.
+    - Gereksiz detay verme, stratejik bakış açısı sun.
+    - Test sonuçları detayları:
     ${sectionDetails}
-3.  **Ana Tavsiyeler**: Tüm testler üzerinden, firmanın dijitalde odaklanması gereken en önemli 2-3 alanı ve uygulanabilir önerileri madde madde sun.
-4.  **Uygun METRIQ360 Paket Önerisi**: Test sonuçlarına göre en uygun 1-2 hizmet paketini (IQ Yerel Güç, IQ Sosyal Büyüme, IQ Reklam Master, IQ Süper İkili, IQ Zirve Paketi) ve nedenini kısaca açıkla.
-5.  **Kapanış ve İletişim**: Kullanıcıyı cesaretlendir, METRIQ360'ın farkına değin ve iletişime davet et.
-6.  **İletişim Bilgileri** (aynen yaz):
+---
+3.  **💡 Ana Tavsiyeler**
+    - Her test için 2-3 maddelik uygulanabilir öneriler ver.
+    - Dili sade, doğrudan ve cesaretlendirici olsun.
+    - Gerekiyorsa teknik bilgi ver ama yalın anlat.
+---
+4.  **📦 Size Özel METRIQ360 Paket Önerisi**
+    - Test sonuçlarına göre en uygun 1 veya 2 hizmet paketini öner.
+    - Neden bu paketi önerdiğini kısa ama net açıklamalarla yaz.
+---
+5.  **✨ Kapanış ve İletişim**
+    - Kullanıcıyı dijital potansiyelini gerçekleştirmesi için cesaretlendir.
+    - METRIQ360’ın “IQ360 Sistemi” ve “Turuncu Güç” yaklaşımına kısaca değin.
+    - İletişime geçmeye davet et.
+---
+6.  **📞 İletişim Bilgileri** (aynen yaz, lütfen bu bilgiyi değiştirme):
     - Web: www.metriq360.com
     - E-posta: bilgi@metriq360.com
     - Telefon: +90 537 948 48 68
