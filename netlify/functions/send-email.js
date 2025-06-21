@@ -1,8 +1,9 @@
-// Bu dosyanın tam yolu: your-project-root/netlify/functions/send-email.js
-const nodemailer = require('nodemailer');
+// This file should be at: your-project-root/netlify/functions/send-email.js
+import nodemailer from 'nodemailer';
 
-exports.handler = async (event) => {
-  // Sadece POST isteklerini kabul et
+// Use `export const handler` for ES Module syntax, which resolves the warning.
+export const handler = async (event) => {
+  // Only accept POST requests
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
@@ -10,23 +11,23 @@ exports.handler = async (event) => {
   try {
     const { userInfo, report } = JSON.parse(event.body);
 
-    // --- Nodemailer Kurulumu ---
-    // E-posta gönderici bilgilerinizi Netlify'daki ortam değişkenlerinden alacağız.
-    // Bu, bilgilerinizin güvende kalmasını sağlar.
+    // --- Nodemailer Setup ---
+    // It will get your email credentials from Netlify's environment variables.
+    // This keeps your credentials secure.
     const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST, // ör: 'smtp.gmail.com'
+      host: process.env.EMAIL_HOST, // e.g., 'smtp.gmail.com'
       port: 587,
       secure: false, // true for 465, false for other ports
       auth: {
-        user: process.env.EMAIL_USER, // E-posta adresiniz
-        pass: process.env.EMAIL_PASS, // E-posta şifreniz veya uygulama şifreniz
+        user: process.env.EMAIL_USER, // Your email address
+        pass: process.env.EMAIL_PASS, // Your email or app password
       },
     });
 
-    // --- E-posta İçeriği (Site Sahibine) ---
+    // --- Email to Admin ---
     const mailToAdmin = {
       from: `"Metriq360 Test Sistemi" <${process.env.EMAIL_USER}>`,
-      to: process.env.ADMIN_EMAIL, // Raporun gönderileceği sizin e-posta adresiniz
+      to: process.env.ADMIN_EMAIL, // Your email address to receive notifications
       subject: `Yeni Test Sonucu: ${userInfo.name} ${userInfo.surname}`,
       html: `
         <h1>Yeni Bir Dijital Pazarlama Testi Tamamlandı!</h1>
@@ -39,7 +40,7 @@ exports.handler = async (event) => {
       `,
     };
     
-    // --- E-posta İçeriği (Kullanıcıya) ---
+    // --- Email to User ---
     const mailToUser = {
         from: `"Metriq360" <${process.env.EMAIL_USER}>`,
         to: userInfo.email,
@@ -56,7 +57,7 @@ exports.handler = async (event) => {
     };
 
 
-    // E-postaları gönder
+    // Send the emails
     await transporter.sendMail(mailToAdmin);
     await transporter.sendMail(mailToUser);
 
