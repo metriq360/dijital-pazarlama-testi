@@ -1,16 +1,17 @@
-# Bu dosya, projenizin ana dizininde olmalıdır.
-# Netlify'a projenizi nasıl oluşturacağını ve fonksiyonları nerede bulacağını söyler.
+# Bu, Netlify'ın projenizi nasıl kuracağını ve yayınlayacağını belirleyen ana yapılandırma dosyasıdır.
 
 [build]
-  # Projeyi yayına hazırlamak için çalıştırılacak komut
+  # Projeyi yayına hazırlamak için çalıştırılacak komut.
   command = "npm run build"
   
-  # Yayına alınacak dosyaların bulunduğu klasör (Vite için 'dist')
+  # Komut çalıştıktan sonra yayına alınacak olan dosyaların bulunduğu klasör.
+  # React (Vite) projeleri için bu genellikle 'dist' klasörüdür.
   publish = "dist"
-  
-  # Arka plan kodlarımızın (fonksiyonlarımızın) bulunduğu klasör
-  functions = "netlify/functions"
 
-# Bu blok, fonksiyonların nasıl paketleneceğini belirtir.
+# Bu bölüm, arka plan kodlarınızın (Netlify Fonksiyonları) nerede olduğunu ve nasıl paketleneceğini belirtir.
 [functions]
+  # Fonksiyon dosyalarının bulunduğu klasörün yolu.
+  directory = "netlify/functions"
+  
+  # Fonksiyonları paketlemek için kullanılacak araç. 'esbuild' modern ve hızlıdır.
   node_bundler = "esbuild"
