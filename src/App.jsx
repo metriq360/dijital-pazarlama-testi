@@ -227,12 +227,18 @@ function App() {
       setReportData(detailedReport);
       setShortAdvice(shortAdvice);
 
-      // Now send the generated report via email
+      // Now send the generated report AND the raw data via email
       setEmailStatus('Rapor oluşturuldu, e-posta gönderiliyor...');
       const emailResponse = await fetch('/.netlify/functions/send-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userInfo: user, report: detailedReport }),
+          body: JSON.stringify({ 
+              userInfo: user, 
+              report: detailedReport,
+              scores: scores,
+              answers: answers,
+              selectedSections: selectedSections
+          }),
       });
 
       if (emailResponse.ok) {
@@ -248,6 +254,7 @@ function App() {
           timestamp: new Date(),
           userInfo: user,
           ...scores,
+          answers,
           selectedSections,
           detailedReport,
           shortAdvice,
