@@ -368,7 +368,7 @@ function App() {
                 </div>
               )}
               {!reportLoading && (
-                <div className="text-left text-gray-700 max-w-none"><ReactMarkdown>{reportData}</ReactMarkdown></div>
+                <div className="text-left text-gray-700 max-w-none prose prose-p:my-2 prose-h3:text-lg"><ReactMarkdown>{reportData}</ReactMarkdown></div>
               )}
             </div>
             <div className="bg-green-50 p-4 rounded-xl shadow-inner border mt-6">
