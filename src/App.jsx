@@ -281,7 +281,7 @@ function App() {
   // --- Gemini API Integration for Detailed Report ---
   const generateDetailedReport = async (overallScore, overallMaxScore, sectionScores, sectionMaxScores, userInfo) => {
     setReportLoading(true);
-    setReportData('Detaylı raporunuz oluşturuluyor...');
+    setReportData(''); 
 
     const strongSections = [];
     const weakSections = [];
@@ -336,19 +336,29 @@ Zayıf Yönler: ${weakPointsText}
         body: JSON.stringify(payload)
       });
       const result = await response.json();
-
-      let generatedReport = 'Rapor oluşturulamadı. Lütfen daha sonra tekrar deneyin.';
-      if (result.candidates && result.candidates.length > 0 && result.candidates[0].content.parts[0].text) {
-        generatedReport = result.candidates[0].content.parts[0].text;
+      
+      let generatedReport = 'Rapor oluşturulamadı. Lütfen daha sonra tekrar deneyin.'; // Default error message
+      
+      // FIX: Add a robust check for valid, non-empty text from the API
+      if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts[0].text) {
+        const text = result.candidates[0].content.parts[0].text;
+        if (text && text.trim().length > 0) {
+            generatedReport = text;
+        } else {
+            console.error("Gemini API returned an empty string for the detailed report.");
+            generatedReport = "Üzgünüz, yapay zeka bir rapor oluşturamadı. Bu durum genellikle anlık bir sorundan kaynaklanır. Lütfen daha sonra tekrar deneyin.";
+        }
       } else {
-        console.error("Unexpected response from Gemini API for detailed report:", result);
+        console.error("Unexpected response structure from Gemini API for detailed report:", result);
       }
+
       setReportData(generatedReport);
       return generatedReport;
     } catch (apiError) {
       console.error("Gemini API error (detailed report):", apiError);
-      setReportData('Detaylı rapor oluşturulurken bir hata oluştu.');
-      return null;
+      const errorText = 'Detaylı rapor oluşturulurken bir hata oluştu. Lütfen ağ bağlantınızı kontrol edin.';
+      setReportData(errorText);
+      return errorText;
     } finally {
       setReportLoading(false);
     }
@@ -356,20 +366,17 @@ Zayıf Yönler: ${weakPointsText}
 
   // --- Quiz Submission and Data Handling ---
   const handleSubmitQuiz = async () => {
-    // 1. Calculate scores and set initial state for results page
     const { totalScore, totalMaxScore, sectionScores: sScores, sectionMaxScores: sMaxScores } = calculateScore();
     setOverallScore(totalScore);
     setOverallMaxScore(totalMaxScore);
     setSectionScores(sScores);
     setSectionMaxScores(sMaxScores);
     setCurrentStep('results');
-    setEmailStatus('Raporlar oluşturuluyor...'); // Set initial email status
+    setEmailStatus('Raporlar oluşturuluyor...');
 
-    // 2. Generate AI content
     const finalShortAdvice = await generateShortAdvice(totalScore, totalMaxScore);
     const detailedReport = await generateDetailedReport(totalScore, totalMaxScore, sScores, sMaxScores, user);
     
-    // 3. Save data to Firestore
     if (db && userId && detailedReport) {
       try {
         await addDoc(collection(db, `artifacts/${appId}/users/${userId}/quizzes`), {
@@ -392,7 +399,7 @@ Zayıf Yönler: ${weakPointsText}
       }
     }
     
-    // 4. Send email via Netlify Function
+    // The check 'if (detailedReport)' now correctly handles cases where the report might be an error string.
     if (detailedReport) {
         setEmailStatus('E-posta gönderiliyor...');
         try {
@@ -569,14 +576,24 @@ Zayıf Yönler: ${weakPointsText}
             </div>
             <div className="bg-purple-50 p-6 rounded-xl shadow-inner border border-purple-200 mt-6">
               <h3 className="text-xl font-semibold text-purple-800 mb-3">Detaylı Rapor ve Stratejiniz</h3>
-              {reportLoading ? (
+              {reportLoading && (
                 <div className="flex flex-col items-center justify-center p-4">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
-                  <p className="mt-4 text-gray-600">{reportData}</p>
+                  <p className="mt-4 text-gray-600">Detaylı raporunuz oluşturuluyor...</p>
                 </div>
-              ) : (
-                <div className="text-left text-gray-700 prose max-w-none prose-p:my-2 prose-headings:my-3 prose-strong:text-gray-800">
-                  <ReactMarkdown children={reportData} />
+              )}
+              {!reportLoading && reportData && (
+                <div className="text-left text-gray-700 max-w-none">
+                  <ReactMarkdown
+                    components={{
+                      h1: ({node, ...props}) => <h1 className="text-2xl font-bold my-4" {...props} />,
+                      h2: ({node, ...props}) => <h2 className="text-xl font-bold my-3" {...props} />,
+                      p: ({node, ...props}) => <p className="my-2" {...props} />,
+                      strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
+                    }}
+                  >
+                    {reportData}
+                  </ReactMarkdown>
                 </div>
               )}
             </div>
