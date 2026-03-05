@@ -4,9 +4,9 @@ import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged }
 import { getFirestore, collection, addDoc } from 'firebase/firestore';
 import ReactMarkdown from 'react-markdown';
 
-// Firebase ve App ID yapılandırması
+// Global değişkenlerden gelen Firebase yapılandırması
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "" }; 
+const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
 // Soru Bankası
@@ -83,33 +83,37 @@ function App() {
   const [emailStatus, setEmailStatus] = useState('');
 
   useEffect(() => {
-    // FAVICON VE BAŞLIK GÜNCELLEMESİ
-    const updateFavicon = () => {
-      const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
-      link.type = 'image/png';
-      link.rel = 'icon';
-      link.href = 'https://i.imgur.com/DMqrCwJ.png';
-      document.getElementsByTagName('head')[0].appendChild(link);
-      document.title = "METRIQ360 | Dijital Sağlık Testi";
-    };
-    updateFavicon();
+    // 1. Favicon ve Sayfa Başlığı
+    const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
+    link.type = 'image/png';
+    link.rel = 'icon';
+    link.href = 'https://i.imgur.com/DMqrCwJ.png';
+    document.getElementsByTagName('head')[0].appendChild(link);
+    document.title = "METRIQ360 | Büyüme Analiz Testi";
 
+    // 2. Firebase Init
     const initFirebase = async () => {
       try {
-        const app = initializeApp(firebaseConfig);
+        if (!firebaseConfigStr) { setLoading(false); return; }
+        const config = JSON.parse(firebaseConfigStr);
+        const app = initializeApp(config);
         const authInstance = getAuth(app);
         const dbInstance = getFirestore(app);
         setAuth(authInstance); setDb(dbInstance);
+
         const doAuth = async () => {
           if (initialAuthToken) await signInWithCustomToken(authInstance, initialAuthToken);
           else await signInAnonymously(authInstance);
         };
         await doAuth();
-        onAuthStateChanged(authInstance, (firebaseUser) => {
-          if (firebaseUser) setUserId(firebaseUser.uid);
+        onAuthStateChanged(authInstance, (fbUser) => {
+          if (fbUser) setUserId(fbUser.uid);
           setLoading(false);
         });
-      } catch (e) { console.error(e); setLoading(false); }
+      } catch (e) {
+        console.warn("Firebase atlandı:", e.message);
+        setLoading(false);
+      }
     };
     initFirebase();
   }, []);
@@ -154,46 +158,50 @@ function App() {
 
     try {
       const baseUrl = window.location.origin === 'null' ? '' : window.location.origin;
+      
+      // AI Raporu
       const reportResponse = await fetch(`${baseUrl}/.netlify/functions/generate-report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userInfo: user, ...scores, selectedSections }),
       });
-      if (!reportResponse.ok) throw new Error("AI Rapor Hatası");
+      if (!reportResponse.ok) throw new Error("Rapor şu an oluşturulamıyor.");
       const data = await reportResponse.json();
       setReportData(data.detailedReport); setShortAdvice(data.shortAdvice);
 
+      // Mail Gönderimi
       setEmailStatus('Raporunuz e-postanıza gönderiliyor...');
       const emailResponse = await fetch(`${baseUrl}/.netlify/functions/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userInfo: user, report: data.detailedReport, scores, answers, selectedSections }),
       });
-      if (emailResponse.ok) setEmailStatus('Rapor e-postanıza başarıyla gönderildi!');
-      else setEmailStatus('Rapor hazırlandı ancak e-posta servisinde bir hata oluştu.');
+      if (emailResponse.ok) setEmailStatus('Rapor başarıyla gönderildi!');
+      else setEmailStatus('Rapor hazırlandı ancak mailde gecikme olabilir.');
 
+      // Firestore
       if (db && userId) {
         await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'quizzes'), {
           timestamp: new Date(), userInfo: user, ...scores, detailedReport: data.detailedReport
         });
       }
-    } catch (err) { setError("Analiz sırasında bir sorun oluştu."); }
+    } catch (err) { setError(err.message); }
     finally { setReportLoading(false); }
   };
 
   const resetApp = () => { setCurrentStep('form'); setUser({ name: '', surname: '', sector: '', email: '' }); setSelectedSections([]); setAnswers({}); setError(''); setEmailStatus(''); setReportData(''); };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-sans bg-white text-orange-500 font-bold italic tracking-widest animate-pulse">METRIQ360 YÜKLENİYOR...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-orange-500 font-bold italic tracking-widest animate-pulse">METRIQ360...</div>;
 
   return (
     <div className="min-h-screen bg-orange-50 flex flex-col items-center justify-center p-4 font-sans text-slate-900">
-      <div className="bg-white p-6 md:p-10 rounded-3xl shadow-2xl w-full max-w-2xl border-t-8 border-orange-500 text-center">
+      <div className="bg-white p-6 md:p-10 rounded-3xl shadow-2xl w-full max-w-2xl border-t-8 border-orange-500 text-center relative overflow-hidden">
         <h1 className="text-3xl md:text-5xl font-black text-slate-900 mb-2 tracking-tight uppercase">
           METR<span className="text-orange-500 relative inline-block text-4xl md:text-6xl mx-1 italic">IQ<span className="absolute -bottom-1 left-0 w-full h-1.5 bg-orange-400 rounded-full"></span></span>360
         </h1>
         <p className="text-slate-500 font-bold mb-8 uppercase tracking-widest text-[10px] md:text-xs text-center">Dijital Pazarlama Sağlık Testi</p>
         
-        {error && <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6 text-sm border-l-4 border-red-500 font-bold text-left">{error}</div>}
+        {error && <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6 text-xs border-l-4 border-red-500 font-bold text-left">{error}</div>}
 
         {currentStep === 'form' && (
           <form onSubmit={handleUserFormSubmit} className="space-y-4 text-left">
@@ -206,10 +214,10 @@ function App() {
         )}
 
         {currentStep === 'quiz-select' && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-bold text-slate-800 mb-4">Analiz Alanlarını Seçin</h2>
+          <div className="space-y-4 text-left">
+            <h2 className="text-xl font-bold text-slate-800 mb-4 text-center">Analiz Alanlarını Seçin</h2>
             {[1, 2, 3, 4, 5].map(num => (
-              <label key={num} className="flex items-center p-4 bg-slate-50 rounded-2xl border-2 border-transparent hover:border-orange-300 cursor-pointer transition has-[:checked]:bg-orange-50 has-[:checked]:border-orange-500 text-left">
+              <label key={num} className="flex items-center p-4 bg-slate-50 rounded-2xl border-2 border-transparent hover:border-orange-300 cursor-pointer transition has-[:checked]:bg-orange-50 has-[:checked]:border-orange-500">
                 <input type="checkbox" checked={selectedSections.includes(num)} onChange={() => handleSectionToggle(num)} className="hidden" />
                 <span className={`text-lg font-semibold ${selectedSections.includes(num) ? 'text-orange-600' : 'text-slate-700'}`}>{['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'][num]}</span>
               </label>
@@ -222,7 +230,7 @@ function App() {
           <div className="space-y-8 text-left">
             {selectedSections.map(sNum => (
               <div key={sNum} className="space-y-4">
-                <h3 className="text-lg font-black text-slate-800 border-b-2 border-orange-100 pb-2 uppercase tracking-tight">{['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'][sNum]}</h3>
+                <h3 className="text-lg font-black text-slate-800 border-b-2 border-orange-100 pb-2 uppercase tracking-tight italic">{['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'][sNum]}</h3>
                 {allQuestions.filter(q => q.section === sNum).map((q, idx) => (
                   <div key={q.id} className="bg-slate-50 p-5 rounded-2xl border border-slate-100 shadow-sm">
                     <p className="font-bold text-slate-800 mb-4 text-sm">{idx + 1}. {q.text}</p>
@@ -245,23 +253,21 @@ function App() {
               <h2 className="text-xs opacity-70 uppercase tracking-[0.3em] font-black mb-2">Dijital Sağlık Skoru</h2>
               <div className="text-6xl font-black">{overallScore} <span className="text-2xl opacity-40">/ {overallMaxScore}</span></div>
             </div>
-            <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100 italic font-bold text-orange-900 text-sm italic">
-              "{shortAdvice || 'Analiz ediliyor...'}"
-            </div>
+            <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100 font-bold text-orange-900 text-sm">"{shortAdvice || 'Analiz ediliyor...'}"</div>
             <div className="text-left bg-slate-50 p-6 rounded-3xl border border-slate-100 shadow-sm">
               <h3 className="text-xl font-black text-slate-900 mb-4 flex items-center gap-2 underline decoration-orange-500 uppercase tracking-tighter italic">📍 Stratejik Ön Analiz</h3>
               {reportLoading ? (
                 <div className="flex flex-col items-center py-10 opacity-50 text-sm font-bold animate-pulse italic text-orange-600 text-center w-full uppercase text-[10px]">Yapay Zeka firmanızı analiz ediyor...</div>
               ) : (
-                <div className="prose prose-orange max-w-none text-slate-700 leading-relaxed text-sm md:text-base"><ReactMarkdown>{reportData || 'Rapor hazırlanamadı.'}</ReactMarkdown></div>
+                <div className="prose prose-orange max-w-none text-slate-700 leading-relaxed text-sm md:text-base"><ReactMarkdown>{reportData || 'Rapor hazırlanırken hata oluştu.'}</ReactMarkdown></div>
               )}
             </div>
             <div className="bg-emerald-50 p-3 rounded-xl text-emerald-800 font-black text-[10px] border border-emerald-200 uppercase tracking-widest italic">{emailStatus}</div>
             <div className="bg-orange-500 p-8 rounded-3xl shadow-2xl border-4 border-white text-white">
-              <h4 className="font-black text-2xl mb-2 uppercase italic">BİREBİR BÜYÜME ANALİZİ 📈</h4>
-              <p className="text-orange-50 font-medium mb-6 text-sm">Gerçek büyüme motoru kurgusu için randevunuzu hemen oluşturun.</p>
-              <a href="https://wa.me/905379484868?text=Merhaba, Dijital Pazarlama Sağlık Testimi tamamladım. Rapor verilerime göre birebir strateji analizi randevusu almak istiyorum." target="_blank" rel="noreferrer" className="flex items-center justify-center gap-3 bg-white text-orange-600 font-black py-4 px-6 rounded-2xl shadow-xl hover:bg-slate-100 transition transform hover:scale-105 uppercase tracking-widest text-sm">STRATEJİ RANDEVUSU AL</a>
-              <p className="mt-4 font-black text-sm">📞 +90 537 948 48 68</p>
+              <h4 className="font-black text-2xl mb-2 uppercase italic text-center">BİREBİR BÜYÜME ANALİZİ 📈</h4>
+              <p className="text-orange-50 font-medium mb-6 text-sm text-center">Bu verileri firmanızın gerçek büyüme motoruna dönüştürmek için randevunuzu hemen oluşturun.</p>
+              <a href="https://wa.me/905379484868?text=Merhaba, Sağlık Testimi tamamladım. Birebir büyüme analizi randevusu almak istiyorum." target="_blank" rel="noreferrer" className="flex items-center justify-center gap-3 bg-white text-orange-600 font-black py-4 px-6 rounded-2xl shadow-xl hover:bg-slate-100 transition transform hover:scale-105 uppercase tracking-widest text-sm">STRATEJİ RANDEVUSU AL</a>
+              <p className="mt-4 font-black text-sm text-center">📞 +90 537 948 48 68</p>
             </div>
             <button onClick={resetApp} className="text-slate-400 font-bold hover:text-slate-600 transition underline text-xs decoration-orange-300">Yeni Test Başlat</button>
           </div>
