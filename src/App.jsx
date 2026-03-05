@@ -73,7 +73,6 @@ function App() {
   const [answers, setAnswers] = useState({});
   const [overallScore, setOverallScore] = useState(0);
   const [overallMaxScore, setOverallMaxScore] = useState(0);
-  const [normalizedScore, setNormalizedScore] = useState(0);
   const [sectionScores, setSectionScores] = useState({});
   const [sectionMaxScores, setSectionMaxScores] = useState({});
   const [shortAdvice, setShortAdvice] = useState('');
@@ -84,13 +83,14 @@ function App() {
   const [emailStatus, setEmailStatus] = useState('');
 
   useEffect(() => {
-    const setBranding = () => {
+    // Branding
+    const updateMetadata = () => {
       const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
       link.type = 'image/png'; link.rel = 'icon'; link.href = 'https://i.imgur.com/DMqrCwJ.png';
       document.getElementsByTagName('head')[0].appendChild(link);
-      document.title = "METRIQ360 | Dijital Büyüme Testi";
+      document.title = "METRIQ360 | Büyüme Analiz Testi";
     };
-    setBranding();
+    updateMetadata();
 
     const initFirebase = async () => {
       if (!firebaseConfigStr) { setLoading(false); return; }
@@ -128,92 +128,56 @@ function App() {
 
   const handleAnswerChange = (qId, val) => { setAnswers(prev => ({ ...prev, [qId]: val })); };
 
-  const calculateScores = () => {
-    let rawTotal = 0; let rawMax = 0;
-    const sScores = {}; const sMaxScores = {};
+  const calculateScore = () => {
+    let totalScore = 0, totalMaxScore = 0;
+    const sScores = {}, sMaxScores = {};
     selectedSections.forEach(num => {
-      let sectionCurrent = 0;
-      const sectionQs = allQuestions.filter(q => q.section === num);
-      sectionQs.forEach(q => { sectionCurrent += (answers[q.id] || 0); });
-      sScores[num] = sectionCurrent;
-      sMaxScores[num] = sectionQs.length * 5;
-      rawTotal += sectionCurrent;
-      rawMax += sectionQs.length * 5;
+      let cur = 0; const qs = allQuestions.filter(q => q.section === num);
+      qs.forEach(q => cur += (answers[q.id] || 0));
+      sScores[num] = cur; sMaxScores[num] = qs.length * 5;
+      totalScore += cur; totalMaxScore += qs.length * 5;
     });
-    const norm = rawMax > 0 ? Math.round((rawTotal / rawMax) * 100) : 0;
-    return { rawTotal, rawMax, norm, sScores, sMaxScores };
+    return { totalScore, totalMaxScore, sectionScores: sScores, sectionMaxScores: sMaxScores };
   };
 
   const handleSubmitQuiz = async () => {
-    const result = calculateScores();
-    setOverallScore(result.rawTotal);
-    setOverallMaxScore(result.rawMax);
-    setNormalizedScore(result.norm);
-    setSectionScores(result.sScores);
-    setSectionMaxScores(result.sMaxScores);
-    
-    setCurrentStep('results');
-    setReportLoading(true);
-    setError('');
+    const scores = calculateScore();
+    setOverallScore(scores.totalScore); setOverallMaxScore(scores.totalMaxScore);
+    setSectionScores(scores.sectionScores); setSectionMaxScores(scores.sectionMaxScores);
+    setCurrentStep('results'); setReportLoading(true); setError('');
 
     try {
       const baseUrl = window.location.origin === 'null' ? '' : window.location.origin;
-      
-      // 1. AI Raporu Al
+      // AI Raporu
       const reportRes = await fetch(`${baseUrl}/.netlify/functions/generate-report`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            userInfo: user, 
-            totalScore: result.norm,
-            totalMaxScore: 100,
-            sectionScores: result.sScores,
-            sectionMaxScores: result.sMaxScores,
-            selectedSections 
-        }),
+        body: JSON.stringify({ userInfo: user, ...scores, selectedSections }),
       });
-      if (!reportRes.ok) throw new Error("Rapor servisi meşgul.");
+      if (!reportRes.ok) throw new Error("AI Raporu hazırlanırken hata oluştu.");
       const data = await reportRes.json();
-      setReportData(data.detailedReport);
-      setShortAdvice(data.shortAdvice);
+      setReportData(data.detailedReport); setShortAdvice(data.shortAdvice);
 
-      // 2. Mail Gönder - TÜM VERİLERİ GÖNDERİYORUZ (scores, answers, selectedSections eklendi)
+      // Mail Gönder
       setEmailStatus('Raporunuz e-postanıza gönderiliyor...');
       const emailRes = await fetch(`${baseUrl}/.netlify/functions/send-email`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            userInfo: user, 
-            report: data.detailedReport,
-            scores: {
-                totalScore: result.norm,
-                totalMaxScore: 100,
-                sectionScores: result.sScores,
-                sectionMaxScores: result.sMaxScores
-            },
-            answers,
-            selectedSections
-        }),
+        body: JSON.stringify({ userInfo: user, report: data.detailedReport, scores, answers, selectedSections }),
       });
-      if (emailRes.ok) setEmailStatus('Rapor başarıyla gönderildi!');
-      else setEmailStatus('Mail gönderiminde bir sorun oluştu.');
+      if (emailRes.ok) setEmailStatus('Analiz e-postanıza başarıyla ulaştırıldı!');
+      else setEmailStatus('Rapor hazırlandı ancak e-posta gönderilemedi.');
 
       if (db && userId) {
         await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'quizzes'), {
-          timestamp: new Date(), userInfo: user, score: result.norm, detailedReport: data.detailedReport
+          timestamp: new Date(), userInfo: user, ...scores, detailedReport: data.detailedReport
         });
       }
     } catch (err) { setError(err.message); }
     finally { setReportLoading(false); }
   };
 
-  const getScoreColorClass = (score) => {
-    if (score < 40) return 'bg-red-600';
-    if (score < 70) return 'bg-orange-500';
-    return 'bg-emerald-600';
-  };
-
   const resetApp = () => { setCurrentStep('form'); setUser({ name: '', surname: '', sector: '', email: '' }); setSelectedSections([]); setAnswers({}); setError(''); setEmailStatus(''); setReportData(''); };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-orange-500 font-black tracking-widest animate-pulse">METRIQ360...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-sans text-orange-500 font-black tracking-widest animate-pulse italic">METRIQ360 YÜKLENİYOR...</div>;
 
   return (
     <div className="min-h-screen bg-orange-50 flex flex-col items-center justify-center p-4 font-sans text-slate-900">
@@ -221,17 +185,17 @@ function App() {
         <h1 className="text-3xl md:text-5xl font-black text-slate-900 mb-2 tracking-tight uppercase">
           METR<span className="text-orange-500 mx-1">IQ</span>360
         </h1>
-        <p className="text-slate-500 font-bold mb-8 uppercase tracking-widest text-[10px] md:text-xs">Dijital Pazarlama Sağlık Testi</p>
+        <p className="text-slate-500 font-bold mb-8 uppercase tracking-widest text-[10px] md:text-xs text-center">Dijital Pazarlama Sağlık Testi</p>
         
         {error && <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6 text-xs border-l-4 border-red-500 font-bold text-left">{error}</div>}
 
         {currentStep === 'form' && (
           <form onSubmit={handleUserFormSubmit} className="space-y-4 text-left">
-            <input type="text" placeholder="Adınız" value={user.name} onChange={(e)=>setUser({...user, name: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition shadow-sm" required />
-            <input type="text" placeholder="Soyadınız" value={user.surname} onChange={(e)=>setUser({...user, surname: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition shadow-sm" required />
-            <input type="text" placeholder="Sektörünüz" value={user.sector} onChange={(e)=>setUser({...user, sector: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition shadow-sm" required />
-            <input type="email" placeholder="E-posta Adresiniz" value={user.email} onChange={(e)=>setUser({...user, email: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition shadow-sm" required />
-            <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-4 rounded-xl shadow-lg transition transform hover:-translate-y-1 uppercase tracking-widest">Analize Başla</button>
+            <input type="text" placeholder="Adınız" value={user.name} onChange={(e)=>setUser({...user, name: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition" required />
+            <input type="text" placeholder="Soyadınız" value={user.surname} onChange={(e)=>setUser({...user, surname: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition" required />
+            <input type="text" placeholder="Sektörünüz" value={user.sector} onChange={(e)=>setUser({...user, sector: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition" required />
+            <input type="email" placeholder="E-posta Adresiniz" value={user.email} onChange={(e)=>setUser({...user, email: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition" required />
+            <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-4 rounded-xl shadow-lg transition transform hover:-translate-y-1 uppercase tracking-widest">Teste Başla</button>
           </form>
         )}
 
@@ -244,7 +208,7 @@ function App() {
                 <span className={`text-lg font-semibold ${selectedSections.includes(num) ? 'text-orange-600' : 'text-slate-700'}`}>{['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'][num]}</span>
               </label>
             ))}
-            <button onClick={startQuiz} className="w-full bg-orange-500 text-white font-black py-4 rounded-xl mt-6 shadow-md hover:bg-orange-600 transition uppercase tracking-widest">Sorulara Geç</button>
+            <button onClick={startQuiz} className="w-full bg-orange-500 text-white font-black py-4 rounded-xl mt-6 shadow-md hover:bg-orange-600 transition uppercase tracking-widest text-sm">Sorulara Geç</button>
           </div>
         )}
 
@@ -265,15 +229,15 @@ function App() {
                 ))}
               </div>
             ))}
-            <button onClick={handleSubmitQuiz} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-xl shadow-lg transition uppercase tracking-widest">Testi Tamamla</button>
+            <button onClick={handleSubmitQuiz} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-xl shadow-lg transition uppercase tracking-widest text-sm">Analizi Tamamla</button>
           </div>
         )}
 
         {currentStep === 'results' && (
           <div className="space-y-6 text-center">
-            <div className={`${getScoreColorClass(normalizedScore)} text-white p-8 rounded-3xl shadow-xl transition-colors duration-500`}>
+            <div className="bg-slate-800 text-white p-8 rounded-3xl shadow-inner">
               <h2 className="text-xs opacity-70 uppercase tracking-[0.3em] font-black mb-2">Dijital Sağlık Skoru</h2>
-              <div className="text-7xl font-black">{normalizedScore} <span className="text-2xl opacity-40">/ 100</span></div>
+              <div className="text-6xl font-black">{overallScore} <span className="text-2xl opacity-40">/ {overallMaxScore}</span></div>
             </div>
             <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100 italic font-bold text-orange-900 text-sm italic">"{shortAdvice || 'Analiz ediliyor...'}"</div>
             <div className="text-left bg-slate-50 p-6 rounded-3xl border border-slate-100 shadow-sm">
@@ -281,14 +245,14 @@ function App() {
               {reportLoading ? (
                 <div className="flex flex-col items-center py-10 opacity-50 text-sm font-bold animate-pulse italic text-orange-600 text-center w-full uppercase text-[10px]">Yapay Zeka analiz ediyor...</div>
               ) : (
-                <div className="prose prose-orange max-w-none text-slate-700 leading-relaxed text-sm md:text-base"><ReactMarkdown>{reportData || 'Rapor hazırlanırken hata oluştu.'}</ReactMarkdown></div>
+                <div className="prose prose-orange max-w-none text-slate-700 leading-relaxed text-sm md:text-base"><ReactMarkdown>{reportData || 'Rapor hazırlanırken bir sorun oluştu.'}</ReactMarkdown></div>
               )}
             </div>
             <div className="bg-emerald-50 p-3 rounded-xl text-emerald-800 font-black text-[10px] border border-emerald-200 uppercase tracking-widest italic">{emailStatus}</div>
             <div className="bg-orange-500 p-8 rounded-3xl shadow-2xl border-4 border-white text-white">
               <h4 className="font-black text-2xl mb-2 uppercase italic text-center">BİREBİR BÜYÜME ANALİZİ 📈</h4>
-              <p className="text-orange-50 font-medium mb-6 text-sm text-center">Bu verileri gerçek bir satış motoruna dönüştürmek için randevunuzu hemen oluşturun.</p>
-              <a href="https://wa.me/905379484868?text=Merhaba, Dijital Pazarlama Sağlık Testimi tamamladım. Birebir randevu almak istiyorum." target="_blank" rel="noreferrer" className="flex items-center justify-center gap-3 bg-white text-orange-600 font-black py-4 px-6 rounded-2xl shadow-xl hover:bg-slate-100 transition transform hover:scale-105 uppercase tracking-widest text-xs md:text-sm">STRATEJİ RANDEVUSU AL</a>
+              <p className="text-orange-50 font-medium mb-6 text-sm text-center">Bu analiz sonuçlarını gerçek bir büyüme motoruna dönüştürmek için strateji randevunuzu hemen oluşturun.</p>
+              <a href="https://wa.me/905379484868?text=Merhaba, Dijital Pazarlama Sağlık Testimi tamamladım. Rapor verilerime göre birebir büyüme strateji randevusu almak istiyorum." target="_blank" rel="noreferrer" className="flex items-center justify-center gap-3 bg-white text-orange-600 font-black py-4 px-6 rounded-2xl shadow-xl hover:bg-slate-100 transition transform hover:scale-105 uppercase tracking-widest text-xs md:text-sm">STRATEJİ RANDEVUSU AL</a>
               <p className="mt-4 font-black text-sm text-center">📞 +90 537 948 48 68</p>
             </div>
             <button onClick={resetApp} className="text-slate-400 font-bold hover:text-slate-600 transition underline text-xs decoration-orange-300">Yeni Test Başlat</button>
