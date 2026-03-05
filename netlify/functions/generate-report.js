@@ -6,10 +6,10 @@ export const handler = async (event) => {
     const { userInfo, totalScore, totalMaxScore, sectionScores, sectionMaxScores, selectedSections } = body;
     const geminiApiKey = process.env.GEMINI_API_KEY;
 
-    if (!geminiApiKey) throw new Error("GEMINI_API_KEY bulunamadı.");
+    if (!geminiApiKey) throw new Error("GEMINI_API_KEY eksik.");
 
     const getSectionTitle = (num) => {
-        const titles = ['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'];
+        const titles = ['', 'Sosyal Medya Yönetimi', 'Yerel SEO ve GBP', 'Reklam ve Kampanya', 'İçerik Pazarlaması', 'Otomasyon'];
         return titles[num] || '';
     };
 
@@ -23,14 +23,15 @@ export const handler = async (event) => {
       Test Puanı: ${totalScore}/${totalMaxScore}
 
       STRATEJİK TALİMATLAR:
-      1. Raporu "Büyüme Motoru" vizyonuyla, profesyonel ve heyecan verici bir dille yaz.
-      2. Müşteri çok soru cevapladığı için rapor DOYURUCU, detaylı ve uzun olmalı (yaklaşık 450 kelime).
-      3. Gelişim Alanları kısmında, seçilen zayıf alanları ${userInfo.sector} sektörüne özel stratejilerle açıkla.
-      4. "Birebir Büyüme Analizi" randevusu alınmasının kritik olduğunu, telefon numaramızla (+90 537 948 48 68) profesyonelce vurgula.
-      5. Markdown sembollerini (#, ##, **) sadece başlıklar için profesyonelce kullan.
+      1. Raporu "Büyüme Motoru" vizyonuyla, çok profesyonel ve vizyoner bir dille yaz.
+      2. Müşteri çok soru cevapladığı için rapor DOYURUCU, detaylı ve uzun olmalı (yaklaşık 500 kelime).
+      3. Gelişim Alanları kısmında, seçilen zayıf alanları ${userInfo.sector} sektörünün gerçeklerine ve zorluklarına göre açıkla.
+      4. Güçlü Yönler kısmında eğer belirgin bir puan yoksa, müşterinin dijital potansiyelini sorgulama arzusunu ve vizyonunu bir güç olarak öne çıkar. "Analiz Ediliyor" gibi geçici başlıklar kullanma, doğrudan motive edici bir anlatım yap.
+      5. "Birebir Büyüme Analizi" randevusu alınmasının kritik olduğunu, telefon numaramızla (+90 537 948 48 68) profesyonelce vurgula.
+      6. Markdown sembollerini (#, ##, **) sadece başlıklar için minimum seviyede kullan.
       
-      GÜÇLÜ: ${strongSections.join(', ') || 'Analiz ediliyor.'}
-      ZAYIF: ${weakSections.join(', ') || 'Analiz ediliyor.'}
+      GÜÇLÜ: ${strongSections.join(', ') || 'Potansiyeli keşfetme arzusu ve stratejik vizyon.'}
+      ZAYIF: ${weakSections.join(', ') || 'Dijital süreçlerin entegrasyonu ve büyüme optimizasyonu.'}
       
       İletişim Bilgileri: +90 537 948 48 68 | bilgi@metriq360.tr | www.metriq360.tr
     `;
@@ -47,7 +48,7 @@ export const handler = async (event) => {
     const result = await response.json();
     if (!response.ok) throw new Error(result.error?.message || "AI servisi hata verdi.");
 
-    const detailedReport = result.candidates?.[0]?.content?.parts?.[0]?.text || "Strateji ekibimiz verilerinizi inceliyor.";
+    const detailedReport = result.candidates?.[0]?.content?.parts?.[0]?.text || "Rapor hazırlanırken bir sorun oluştu.";
 
     return {
       statusCode: 200,
