@@ -9,7 +9,7 @@ export const handler = async (event) => {
     if (!geminiApiKey) throw new Error("GEMINI_API_KEY eksik.");
 
     const getSectionTitle = (num) => {
-        const titles = ['', 'Sosyal Medya Yönetimi', 'Yerel SEO ve GBP', 'Reklam ve Kampanya', 'İçerik Pazarlaması', 'Pazarlama Otomasyonu'];
+        const titles = ['', 'Sosyal Medya Yönetimi', 'Yerel SEO ve GBP', 'Reklam ve Kampanya', 'İçerik Pazarlaması', 'Otomasyon'];
         return titles[num] || '';
     };
 
@@ -17,24 +17,24 @@ export const handler = async (event) => {
     const weakSections = selectedSections.filter(n => (sectionScores[n]/sectionMaxScores[n]) < 0.4).map(getSectionTitle);
 
     const prompt = `
-      Sen METRIQ360 markasının "Kıdemli Dijital Büyüme Stratejisti" yapay zekasısın. 
+      Sen METRIQ360 markasının "Kıdemli Dijital Büyüme Stratejisti"sin. 
       Kullanıcı: ${userInfo.name} ${userInfo.surname}
       Sektör: ${userInfo.sector}
-      Test Skoru: ${totalScore}/${totalMaxScore}
+      Test Puanı: ${totalScore}/${totalMaxScore}
 
       STRATEJİK TALİMATLAR:
-      1. Raporu "Büyüme Motoru" vizyonuyla, profesyonel, vizyoner ve heyecan verici yaz.
-      2. Müşteri çok fazla soru cevapladığı için rapor DOYURUCU, detaylı ve uzun olmalı (yaklaşık 500 kelime).
-      3. Gelişim Alanları kısmında, seçilen zayıf alanları ${userInfo.sector} sektörünün gerçeklerine göre açıkla.
-      4. Güçlü Yönler kısmında eğer puan düşükse bile, müşterinin dijital potansiyelini sorgulama arzusunu ve vizyonunu bir "güçlü karakter" olarak öne çıkar. "Analiz Ediliyor" gibi geçici kelimeler kullanma.
-      5. Eğer 5 bölümün tamamı seçildiyse, bu bölümleri birleştirerek bütünsel bir "Dijital Büyüme Ekosistemi" kurgusu yap.
-      6. "Birebir Büyüme Analizi" randevusu alınmasının kritik olduğunu, telefon numaramızla (+90 537 948 48 68) mühürle. Bol emoji kullan.
-      7. Markdown (#, ##, **) sadece başlıklar için profesyonelce kullan.
+      1. Raporu "Büyüme Motoru" vizyonuyla, profesyonel, vizyoner ve heyecan verici bir dille yaz.
+      2. Müşteri çok soru cevapladığı için rapor DOYURUCU, detaylı ve uzun olmalı (yaklaşık 500 kelime).
+      3. Gelişim Alanları kısmında, seçilen zayıf alanları ${userInfo.sector} sektörünün gerçeklerine ve zorluklarına göre derinlemesine açıkla.
+      4. Güçlü Yönler kısmında eğer puan düşükse bile, müşterinin dijital potansiyelini sorgulama arzusunu ve vizyonunu bir "güçlü temel" olarak öne çıkar.
+      5. Eğer birden fazla bölüm seçildiyse, bu bölümleri birleştirerek bütünsel bir "Dijital Büyüme Ekosistemi" kurgusu yap.
+      6. "Birebir Büyüme Analizi" randevusu alınmasının kritik olduğunu, telefon numaramızla (+90 537 948 48 68) profesyonelce vurgula.
+      7. Markdown sembollerini (#, ##, **) sadece başlıklar için minimum seviyede kullan.
       
       GÜÇLÜ: ${strongSections.join(', ') || 'Dijital vizyon ve dönüşüm arzusu.'}
-      ZAYIF: ${weakSections.join(', ') || 'Entegre büyüme stratejileri ve reklam optimizasyonu.'}
+      ZAYIF: ${weakSections.join(', ') || 'Dijital süreçlerin optimizasyonu ve büyüme kurgusu.'}
       
-      İletişim: +90 537 948 48 68 | bilgi@metriq360.tr | www.metriq360.tr
+      İletişim Bilgileri: +90 537 948 48 68 | bilgi@metriq360.tr | www.metriq360.tr
     `;
 
     // Kesinleşen model ismi ve native fetch kullanımı
@@ -56,7 +56,7 @@ export const handler = async (event) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ 
         detailedReport, 
-        shortAdvice: `Bu analiz, ${userInfo.sector} sektöründeki büyüme motorunuz için ilk kıvılcımdır! 🚀` 
+        shortAdvice: `Bu analiz, ${userInfo.sector} sektöründeki dijital büyüme motorunuz için ilk kıvılcımdır! 🚀` 
       }),
     };
 
