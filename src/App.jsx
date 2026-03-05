@@ -88,9 +88,9 @@ function App() {
       const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
       link.type = 'image/png';
       link.rel = 'icon';
-      link.href = 'https://i.imgur.com/DMqrCwJ.png'; // Doğrudan görsel linki
+      link.href = 'https://i.imgur.com/DMqrCwJ.png';
       document.getElementsByTagName('head')[0].appendChild(link);
-      document.title = "Metriq360 | Dijital Pazarlama Sağlık Testi";
+      document.title = "METRIQ360 | Dijital Sağlık Testi";
     };
     updateFavicon();
 
@@ -170,7 +170,7 @@ function App() {
         body: JSON.stringify({ userInfo: user, report: data.detailedReport, scores, answers, selectedSections }),
       });
       if (emailResponse.ok) setEmailStatus('Rapor e-postanıza başarıyla gönderildi!');
-      else setEmailStatus('Rapor hazırlandı ancak e-posta gönderilemedi.');
+      else setEmailStatus('Rapor hazırlandı ancak e-posta servisinde bir hata oluştu.');
 
       if (db && userId) {
         await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'quizzes'), {
@@ -188,11 +188,10 @@ function App() {
   return (
     <div className="min-h-screen bg-orange-50 flex flex-col items-center justify-center p-4 font-sans text-slate-900">
       <div className="bg-white p-6 md:p-10 rounded-3xl shadow-2xl w-full max-w-2xl border-t-8 border-orange-500 text-center">
-        {/* LOGO: METRIQ360 - BÜYÜK HARF VE IQ VURGUSU */}
         <h1 className="text-3xl md:text-5xl font-black text-slate-900 mb-2 tracking-tight uppercase">
           METR<span className="text-orange-500 relative inline-block text-4xl md:text-6xl mx-1 italic">IQ<span className="absolute -bottom-1 left-0 w-full h-1.5 bg-orange-400 rounded-full"></span></span>360
         </h1>
-        <p className="text-slate-500 font-bold mb-8 uppercase tracking-widest text-[10px] md:text-xs">Dijital Pazarlama Sağlık Testi</p>
+        <p className="text-slate-500 font-bold mb-8 uppercase tracking-widest text-[10px] md:text-xs text-center">Dijital Pazarlama Sağlık Testi</p>
         
         {error && <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6 text-sm border-l-4 border-red-500 font-bold text-left">{error}</div>}
 
@@ -210,7 +209,7 @@ function App() {
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-slate-800 mb-4">Analiz Alanlarını Seçin</h2>
             {[1, 2, 3, 4, 5].map(num => (
-              <label key={num} className="flex items-center p-4 bg-slate-50 rounded-2xl border-2 border-transparent hover:border-orange-300 cursor-pointer transition has-[:checked]:bg-orange-50 has-[:checked]:border-orange-500">
+              <label key={num} className="flex items-center p-4 bg-slate-50 rounded-2xl border-2 border-transparent hover:border-orange-300 cursor-pointer transition has-[:checked]:bg-orange-50 has-[:checked]:border-orange-500 text-left">
                 <input type="checkbox" checked={selectedSections.includes(num)} onChange={() => handleSectionToggle(num)} className="hidden" />
                 <span className={`text-lg font-semibold ${selectedSections.includes(num) ? 'text-orange-600' : 'text-slate-700'}`}>{['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'][num]}</span>
               </label>
@@ -252,7 +251,7 @@ function App() {
             <div className="text-left bg-slate-50 p-6 rounded-3xl border border-slate-100 shadow-sm">
               <h3 className="text-xl font-black text-slate-900 mb-4 flex items-center gap-2 underline decoration-orange-500 uppercase tracking-tighter italic">📍 Stratejik Ön Analiz</h3>
               {reportLoading ? (
-                <div className="flex flex-col items-center py-10 opacity-50 text-sm font-bold animate-pulse italic text-orange-600 text-center w-full uppercase">Yapay Zeka firmanızı analiz ediyor...</div>
+                <div className="flex flex-col items-center py-10 opacity-50 text-sm font-bold animate-pulse italic text-orange-600 text-center w-full uppercase text-[10px]">Yapay Zeka firmanızı analiz ediyor...</div>
               ) : (
                 <div className="prose prose-orange max-w-none text-slate-700 leading-relaxed text-sm md:text-base"><ReactMarkdown>{reportData || 'Rapor hazırlanamadı.'}</ReactMarkdown></div>
               )}
