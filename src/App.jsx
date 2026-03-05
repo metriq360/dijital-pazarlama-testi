@@ -104,7 +104,7 @@ function App() {
   const handleUserFormSubmit = (e) => {
     e.preventDefault();
     if (!user.name || !user.surname || !user.sector || !user.email) {
-      setError('Lütfen tüm alanları eksiksiz doldurun.'); return;
+      setError('Lütfen tüm alanları doldurun.'); return;
     }
     setError(''); setCurrentStep('quiz-select');
   };
@@ -137,65 +137,51 @@ function App() {
     const scores = calculateScore();
     setOverallScore(scores.totalScore); setOverallMaxScore(scores.totalMaxScore);
     setSectionScores(scores.sectionScores); setSectionMaxScores(scores.sectionMaxScores);
-    setCurrentStep('results'); setReportLoading(true);
+    setCurrentStep('results'); setReportLoading(true); setError('');
 
     try {
       const baseUrl = window.location.origin === 'null' ? '' : window.location.origin;
       
-      // AI Raporu Al
       const reportResponse = await fetch(`${baseUrl}/.netlify/functions/generate-report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userInfo: user, ...scores, selectedSections }),
       });
-      const data = await reportResponse.json();
-      setReportData(data.detailedReport); setShortAdvice(data.shortAdvice);
+      if (!reportResponse.ok) throw new Error("AI Rapor Hatası");
+      const reportResData = await reportResponse.json();
+      setReportData(reportResData.detailedReport); setShortAdvice(reportResData.shortAdvice);
 
-      // E-postayı Gönder (Tüm ham verilerle)
       setEmailStatus('Raporunuz e-postanıza gönderiliyor...');
-      await fetch(`${baseUrl}/.netlify/functions/send-email`, {
+      const emailResponse = await fetch(`${baseUrl}/.netlify/functions/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-            userInfo: user, 
-            report: data.detailedReport,
-            scores: scores,
-            answers: answers,
-            selectedSections: selectedSections
+            userInfo: user, report: reportResData.detailedReport, 
+            scores, answers, selectedSections 
         }),
       });
-      setEmailStatus('Rapor başarıyla gönderildi!');
+      if (emailResponse.ok) setEmailStatus('Rapor e-postanıza başarıyla gönderildi!');
+      else setEmailStatus('Rapor hazırlandı ancak e-posta servisinde bir hata oluştu.');
 
       if (db && userId) {
         await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'quizzes'), {
-          timestamp: new Date(), userInfo: user, ...scores, detailedReport: data.detailedReport
+          timestamp: new Date(), userInfo: user, ...scores, detailedReport: reportResData.detailedReport
         });
       }
-    } catch (err) { setError("Analiz sırasında bir sorun oluştu."); }
+    } catch (err) { setError("Hata oluştu, lütfen tekrar deneyin."); }
     finally { setReportLoading(false); }
   };
 
-  const resetApp = () => {
-    setCurrentStep('form');
-    setUser({ name: '', surname: '', sector: '', email: '' });
-    setSelectedSections([]);
-    setAnswers({});
-    setError('');
-    setEmailStatus('');
-    setReportData('');
-  };
+  const resetApp = () => { setCurrentStep('form'); setUser({ name: '', surname: '', sector: '', email: '' }); setSelectedSections([]); setAnswers({}); setError(''); setEmailStatus(''); setReportData(''); };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-sans bg-white text-orange-500 font-bold">Yükleniyor...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-sans bg-white text-orange-500 font-black tracking-widest animate-pulse">METRIQ360 YÜKLENİYOR...</div>;
 
   return (
     <div className="min-h-screen bg-orange-50 flex flex-col items-center justify-center p-4 font-sans text-slate-900">
       <div className="bg-white p-6 md:p-10 rounded-3xl shadow-2xl w-full max-w-2xl border-t-8 border-orange-500 text-center">
-        {/* LOGO: Büyük Harf ve IQ Vurgusu */}
+        {/* LOGO: METRIQ360 - BÜYÜK HARF VE IQ VURGUSU */}
         <h1 className="text-3xl md:text-5xl font-black text-slate-900 mb-2 tracking-tight uppercase">
-          METR<span className="text-orange-500 relative inline-block text-4xl md:text-6xl mx-1">
-            IQ
-            <span className="absolute -bottom-1 left-0 w-full h-1.5 bg-orange-400 rounded-full shadow-sm"></span>
-          </span>360
+          METR<span className="text-orange-500 relative inline-block text-4xl md:text-6xl mx-1 italic">IQ<span className="absolute -bottom-1 left-0 w-full h-1.5 bg-orange-400 rounded-full"></span></span>360
         </h1>
         <p className="text-slate-500 font-bold mb-8 uppercase tracking-widest text-[10px] md:text-xs">Dijital Pazarlama Sağlık Testi</p>
         
@@ -203,10 +189,10 @@ function App() {
 
         {currentStep === 'form' && (
           <form onSubmit={handleUserFormSubmit} className="space-y-4 text-left">
-            <input type="text" placeholder="Adınız" value={user.name} onChange={(e)=>setUser({...user, name: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none" required />
-            <input type="text" placeholder="Soyadınız" value={user.surname} onChange={(e)=>setUser({...user, surname: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none" required />
-            <input type="text" placeholder="Sektörünüz" value={user.sector} onChange={(e)=>setUser({...user, sector: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none" required />
-            <input type="email" placeholder="E-posta Adresiniz" value={user.email} onChange={(e)=>setUser({...user, email: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none" required />
+            <input type="text" placeholder="Adınız" value={user.name} onChange={(e)=>setUser({...user, name: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition" required />
+            <input type="text" placeholder="Soyadınız" value={user.surname} onChange={(e)=>setUser({...user, surname: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition" required />
+            <input type="text" placeholder="Sektörünüz" value={user.sector} onChange={(e)=>setUser({...user, sector: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition" required />
+            <input type="email" placeholder="E-posta Adresiniz" value={user.email} onChange={(e)=>setUser({...user, email: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition" required />
             <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-4 rounded-xl shadow-lg transition transform hover:-translate-y-1 uppercase tracking-widest">Teste Başla</button>
           </form>
         )}
@@ -230,9 +216,9 @@ function App() {
               <div key={sNum} className="space-y-4">
                 <h3 className="text-lg font-black text-slate-800 border-b-2 border-orange-100 pb-2 uppercase tracking-tight">{['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'][sNum]}</h3>
                 {allQuestions.filter(q => q.section === sNum).map((q, idx) => (
-                  <div key={q.id} className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                  <div key={q.id} className="bg-slate-50 p-5 rounded-2xl border border-slate-100 shadow-sm">
                     <p className="font-bold text-slate-800 mb-4 text-sm">{idx + 1}. {q.text}</p>
-                    <div className="flex justify-between gap-1 md:gap-2">
+                    <div className="flex justify-between gap-1 md:gap-2 text-center">
                       {[1, 2, 3, 4, 5].map(v => (
                         <button key={v} onClick={() => handleAnswerChange(q.id, v)} className={`flex-1 py-3 rounded-xl font-black text-sm transition ${answers[q.id] === v ? 'bg-orange-500 text-white shadow-md' : 'bg-white text-slate-400 hover:bg-slate-100 border'}`}>{v}</button>
                       ))}
@@ -241,43 +227,34 @@ function App() {
                 ))}
               </div>
             ))}
-            <button onClick={handleSubmitQuiz} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-xl shadow-lg transition uppercase tracking-widest">Testi Bitir</button>
+            <button onClick={handleSubmitQuiz} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-xl shadow-lg transition uppercase tracking-widest">Analizi Tamamla</button>
           </div>
         )}
 
         {currentStep === 'results' && (
-          <div className="space-y-6">
-            <div className="bg-slate-900 text-white p-8 rounded-3xl shadow-inner">
+          <div className="space-y-6 text-center">
+            <div className="bg-slate-800 text-white p-8 rounded-3xl shadow-inner">
               <h2 className="text-xs opacity-70 uppercase tracking-[0.3em] font-black mb-2">Dijital Sağlık Skoru</h2>
               <div className="text-6xl font-black">{overallScore} <span className="text-2xl opacity-40">/ {overallMaxScore}</span></div>
             </div>
-
-            <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100">
-              <p className="italic text-orange-900 font-bold text-sm">"{shortAdvice || 'Analiz ediliyor...'}"</p>
+            <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100 italic font-bold text-orange-900 text-sm italic">
+              "{shortAdvice || 'Analiz ediliyor...'}"
             </div>
-
-            <div className="text-left bg-slate-50 p-6 rounded-3xl border border-slate-100">
-              <h3 className="text-xl font-black text-slate-900 mb-4 flex items-center gap-2 underline decoration-orange-500">📍 Stratejik Ön Analiz</h3>
+            <div className="text-left bg-slate-50 p-6 rounded-3xl border border-slate-100 shadow-sm">
+              <h3 className="text-xl font-black text-slate-900 mb-4 flex items-center gap-2 underline decoration-orange-500 uppercase tracking-tighter italic">📍 Stratejik Ön Analiz</h3>
               {reportLoading ? (
-                <div className="flex flex-col items-center py-10 opacity-50 text-sm font-bold animate-pulse italic text-orange-600 text-center w-full">Yapay Zeka firmanızı analiz ediyor...</div>
+                <div className="flex flex-col items-center py-10 opacity-50 text-sm font-bold animate-pulse italic text-orange-600 text-center w-full uppercase">Yapay Zeka firmanızı analiz ediyor...</div>
               ) : (
-                <div className="prose prose-orange max-w-none text-slate-700 leading-relaxed text-sm md:text-base">
-                  <ReactMarkdown>{reportData || 'Rapor hazırlanıyor...'}</ReactMarkdown>
-                </div>
+                <div className="prose prose-orange max-w-none text-slate-700 leading-relaxed text-sm md:text-base"><ReactMarkdown>{reportData || 'Rapor hazırlanamadı.'}</ReactMarkdown></div>
               )}
             </div>
-
-            <div className="bg-emerald-50 p-3 rounded-xl text-emerald-800 font-black text-[10px] border border-emerald-200 uppercase tracking-widest">{emailStatus || 'Analiziniz kayıt altına alındı.'}</div>
-
+            <div className="bg-emerald-50 p-3 rounded-xl text-emerald-800 font-black text-[10px] border border-emerald-200 uppercase tracking-widest italic">{emailStatus}</div>
             <div className="bg-orange-500 p-8 rounded-3xl shadow-2xl border-4 border-white text-white">
-              <h4 className="font-black text-2xl mb-2 uppercase">Birebir Büyüme Analizi 📈</h4>
-              <p className="text-orange-50 font-medium mb-6 text-sm">Bu verileri firmanızın gerçek büyüme motoruna dönüştürmek için randevunuzu hemen oluşturun.</p>
-              <a href="https://wa.me/905379484868?text=Merhaba, Dijital Pazarlama Sağlık Testimi tamamladım. Rapor verilerime göre birebir büyüme analizi randevusu almak istiyorum." target="_blank" rel="noreferrer" className="flex items-center justify-center gap-3 bg-white text-orange-600 font-black py-4 px-6 rounded-2xl shadow-xl hover:bg-slate-100 transition transform hover:scale-105 uppercase tracking-widest text-sm">
-                RANDEVU OLUŞTUR
-              </a>
+              <h4 className="font-black text-2xl mb-2 uppercase italic">BİREBİR BÜYÜME ANALİZİ 📈</h4>
+              <p className="text-orange-50 font-medium mb-6 text-sm">Gerçek büyüme motoru kurgusu için randevunuzu hemen oluşturun.</p>
+              <a href="https://wa.me/905379484868?text=Merhaba, Dijital Pazarlama Sağlık Testimi tamamladım. Rapor verilerime göre birebir strateji analizi randevusu almak istiyorum." target="_blank" rel="noreferrer" className="flex items-center justify-center gap-3 bg-white text-orange-600 font-black py-4 px-6 rounded-2xl shadow-xl hover:bg-slate-100 transition transform hover:scale-105 uppercase tracking-widest text-sm">STRATEJİ RANDEVUSU AL</a>
             </div>
-
-            <button onClick={resetApp} className="text-slate-400 font-bold hover:text-slate-600 transition underline underline-offset-4 text-xs">Yeni Test Başlat</button>
+            <button onClick={resetApp} className="text-slate-400 font-bold hover:text-slate-600 transition underline text-xs decoration-orange-300">Yeni Test Başlat</button>
           </div>
         )}
       </div>
