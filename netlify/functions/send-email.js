@@ -74,53 +74,40 @@ export const handler = async (event) => {
       },
     });
 
-    let detailsHTML = `<h3>Detaylı Test Sonuçları (Ham Veri)</h3>`;
-    detailsHTML += `<p><b>Genel Skor:</b> ${scores.totalScore} / ${scores.totalMaxScore}</p>`;
+    let detailsHTML = `<h3 style="color:#f97316;">Detaylı Analiz Verileri (Ham Puanlar)</h3><p><b>Toplam Skor:</b> ${scores.totalScore} / ${scores.totalMaxScore}</p>`;
     
     selectedSections.forEach(sNum => {
-        detailsHTML += `<div style="margin-top: 20px; border-bottom: 2px solid #f97316; padding-bottom: 5px;">
+        detailsHTML += `<div style="margin-top: 15px; border-bottom: 2px solid #f97316; padding-bottom: 5px;">
             <b style="color: #f97316;">Bölüm: ${getSectionTitle(sNum)}</b> (Puan: ${scores.sectionScores[sNum]} / ${scores.sectionMaxScores[sNum]})
         </div><ul style="list-style: none; padding-left: 0;">`;
         
         allQuestions.filter(q => q.section === sNum).forEach(q => {
             const val = answers[q.id] || 'Yanıt Yok';
-            detailsHTML += `<li style="margin-bottom: 8px;">• ${q.text} <br> <b style="color: #444;">Yanıt: ${val} / 5</b></li>`;
+            detailsHTML += `<li style="margin-bottom: 5px;">• ${q.text} <br> <b style="color: #333;">Cevap: ${val} / 5</b></li>`;
         });
         detailsHTML += `</ul>`;
     });
 
     const mailToAdmin = {
-      from: `"METRIQ360 Analiz Sistemi" <${process.env.EMAIL_USER}>`,
+      from: `"METRIQ360 Analiz" <${process.env.EMAIL_USER}>`,
       to: process.env.ADMIN_EMAIL,
-      subject: `Yeni Sağlık Testi Sonucu: ${userInfo.name} ${userInfo.surname} (${userInfo.sector})`,
-      html: `
-        <div style="font-family: sans-serif;">
-            <h1>Yeni Analiz Tamamlandı</h1>
-            <p><b>Müşteri:</b> ${userInfo.name} ${userInfo.surname}</p>
-            <p><b>E-posta:</b> ${userInfo.email}</p>
-            <p><b>Sektör:</b> ${userInfo.sector}</p>
-            <hr>
-            ${detailsHTML}
-            <hr>
-            <h2>Yapay Zeka Raporu:</h2>
-            <div style="background: #fdf2f2; padding: 15px; border-radius: 8px;">${report.replace(/\n/g, '<br>')}</div>
-        </div>
-      `,
+      subject: `Yeni Sağlık Testi: ${userInfo.name} ${userInfo.surname} (${userInfo.sector})`,
+      html: `<h1>Yeni Analiz Tamamlandı</h1><p><b>Müşteri:</b> ${userInfo.name} ${userInfo.surname}</p><p><b>E-posta:</b> ${userInfo.email}</p><hr>${detailsHTML}<hr><h2>Yapay Zeka Raporu:</h2><div style="background: #fdf2f2; padding: 15px; border-radius: 8px;">${report ? report.replace(/\n/g, '<br>') : 'Rapor detayı alınamadı.'}</div>`,
     };
     
     const mailToUser = {
-        from: `"METRIQ360 Strateji Ekibi" <${process.env.EMAIL_USER}>`,
+        from: `"METRIQ360 Strateji" <${process.env.EMAIL_USER}>`,
         to: userInfo.email,
-        subject: `METRIQ360: Dijital Pazarlama Sağlık Testi Raporunuz`,
+        subject: `METRIQ360: Dijital Pazarlama Sağlık Analiz Raporunuz`,
         html: `
             <div style="font-family: sans-serif; max-width: 600px;">
                 <h2 style="color: #f97316;">Merhaba ${userInfo.name},</h2>
-                <p>Dijital pazarlama sağlık testini tamamladığın için tebrikler!</p>
+                <p>Analiziniz tamamlandı. Sizin için oluşturduğumuz büyüme özeti aşağıdadır:</p>
                 <div style="background: #fff7ed; padding: 20px; border-radius: 12px; border: 1px solid #ffedd5;">
-                    ${report.replace(/\n/g, '<br>')}
+                    ${report ? report.replace(/\n/g, '<br>') : 'Raporunuz hazırlanıyor...'}
                 </div>
                 <hr>
-                <p>Stratejinizi bir Büyüme Motoruna dönüştürmek için <a href="https://www.metriq360.tr">web sitemizden</a> randevu alabilirsin.</p>
+                <p>Detaylı stratejinizi kurgulamak için <a href="https://www.metriq360.tr" style="color: #f97316; font-weight: bold;">web sitemizden</a> randevu alabilirsiniz.</p>
                 <p>Saygılarımızla,<br><b>METRIQ360 Ekibi</b></p>
             </div>
         `,
