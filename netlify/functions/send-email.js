@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
 
-// Markdown sembollerini temizleyen ve HTML'e çeviren fonksiyon
-const cleanMarkdownForEmail = (text) => {
+// Markdown sembollerini temizleyen ve profesyonel HTML'e çeviren fonksiyon
+const formatForEmail = (text) => {
     return text
         .replace(/### (.*)/g, '<h3 style="color:#f97316; margin-top:20px; font-family:sans-serif;">$1</h3>')
         .replace(/## (.*)/g, '<h2 style="color:#f97316; margin-top:25px; font-family:sans-serif;">$1</h2>')
@@ -25,24 +25,20 @@ export const handler = async (event) => {
       auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
     });
 
-    const formattedReport = cleanMarkdownForEmail(report);
+    const cleanReport = formatForEmail(report);
 
     const mailToAdmin = {
-      from: `"METRIQ360 Bildirim" <${process.env.EMAIL_USER}>`,
+      from: `"METRIQ360 Analiz" <${process.env.EMAIL_USER}>`,
       to: process.env.ADMIN_EMAIL,
-      subject: `YENİ ANALİZ: ${userInfo.name} ${userInfo.surname} (${userInfo.sector})`,
-      html: `
-        <div style="font-family:sans-serif; color:#333; line-height:1.6; max-width: 700px;">
-            <h1 style="color:#f97316; border-bottom: 2px solid #f97316; padding-bottom: 10px;">Yeni Müşteri Analizi</h1>
-            <p><b>Müşteri:</b> ${userInfo.name} ${userInfo.surname}</p>
-            <p><b>Sektör:</b> ${userInfo.sector}</p>
-            <p><b>E-posta:</b> ${userInfo.email}</p>
-            <hr style="border: 1px solid #eee; margin: 20px 0;">
-            <div style="background:#f9f9f9; padding:25px; border-radius:15px; border: 1px solid #eee;">
-                ${formattedReport}
-            </div>
-        </div>
-      `,
+      subject: `YENİ MÜŞTERİ: ${userInfo.name} ${userInfo.surname} (${userInfo.sector})`,
+      html: `<div style="font-family:sans-serif; color:#333; max-width:700px; line-height:1.6;">
+                <h1 style="color:#f97316;">Yeni Analiz Tamamlandı</h1>
+                <p><b>Müşteri:</b> ${userInfo.name} ${userInfo.surname}</p>
+                <p><b>Sektör:</b> ${userInfo.sector}</p>
+                <p><b>E-posta:</b> ${userInfo.email}</p>
+                <hr style="border:1px solid #eee; margin:20px 0;">
+                <div style="background:#f9f9f9; padding:25px; border-radius:15px; border: 1px solid #eee;">${cleanReport}</div>
+             </div>`,
     };
     
     const mailToUser = {
@@ -60,7 +56,7 @@ export const handler = async (event) => {
                 <p>Dijital pazarlama performansınızı büyük bir titizlikle analiz ettik. Firmanızın büyüme motorunu ateşleyecek stratejik ön değerlendirme aşağıdadır:</p>
                 
                 <div style="background:#fff7ed; padding:30px; border-radius:20px; border:1px solid #ffedd5; margin:30px 0;">
-                    ${formattedReport}
+                    ${cleanReport}
                 </div>
 
                 <div style="text-align:center; background:#f97316; padding:35px; border-radius:25px; color:white; box-shadow: 0 10px 30px rgba(249,115,22,0.2);">
