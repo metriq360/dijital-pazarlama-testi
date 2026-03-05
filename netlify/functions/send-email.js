@@ -1,145 +1,96 @@
 import nodemailer from 'nodemailer';
 
-// Soru-Cevap Eşleşmesi İçin Soru Bankası (Kopya)
-const allQuestions = [
-  { id: 'q1_1', section: 1, text: 'Sosyal medya hesaplarınızda ne sıklıkla paylaşım yapıyorsunuz?' },
-  { id: 'q1_2', section: 1, text: 'Her platform için ayrı bir strateji uyguluyor musunuz?' },
-  { id: 'q1_3', section: 1, text: 'Takipçi sayınız son 6 ayda istikrarlı bir şekilde arttı mı?' },
-  { id: 'q1_4', section: 1, text: 'Paylaşımlarınız etkileşim alıyor mu (beğeni, yorum, paylaşım)?' },
-  { id: 'q1_5', section: 1, text: 'Hedef kitlenizi tanıyarak içerik üretiyor musunuz?' },
-  { id: 'q1_6', section: 1, text: 'Story, reels ve canlı yayın gibi farklı içerik formatlarını kullanıyor musunuz?' },
-  { id: 'q1_7', section: 1, text: 'Sosyal medyada gelen yorumlara ve mesajlara ne kadar hızlı yanıt veriyorsunuz?' },
-  { id: 'q1_8', section: 1, text: 'İçerik takvimi oluşturup gönderileri önceden planlıyor musunuz?' },
-  { id: 'q1_9', section: 1, text: 'Rakiplerinizin sosyal medya stratejilerini analiz ediyor musunuz?' },
-  { id: 'q1_10', section: 1, text: 'Sosyal medya için dış kaynak ya da ajans desteği alıyor musunuz?' },
-  { id: 'q2_1', section: 2, text: 'Google Benim İşletmem (GBP) profiliniz var mı?' },
-  { id: 'q2_2', section: 2, text: 'GBP profilinizde adres, telefon ve açık saatler eksiksiz mi?' },
-  { id: 'q2_3', section: 2, text: 'GBP üzerinde sık sık içerik (fotoğraf, gönderi) paylaşıyor musunuz?' },
-  { id: 'q2_4', section: 2, text: 'Harita konumunuz doğru mu?' },
-  { id: 'q2_5', section: 2, text: 'Müşterilerden düzenli olarak Google yorumu alıyor musunuz?' },
-  { id: 'q2_6', section: 2, text: 'Gelen yorumlara yanıt veriyor musunuz?' },
-  { id: 'q2_7', section: 2, text: 'İşletmeniz yerel dizinlerde ve haritalarda listelenmiş mi?' },
-  { id: 'q2_8', section: 2, text: '“Yakınımdaki [ürün/hizmet]” gibi aramalarda çıkıyor musunuz?' },
-  { id: 'q2_9', section: 2, text: 'GBP verilerini (gösterim, tıklama vs.) analiz ediyor musunuz?' },
-  { id: 'q2_10', section: 2, text: 'Yerel anahtar kelimelere yönelik stratejiniz var mı?' },
-  { id: 'q3_1', section: 3, text: 'Meta (Facebook/Instagram) reklamları yürütüyor musunuz?' },
-  { id: 'q3_2', section: 3, text: 'Google Ads kampanyaları aktif mi?' },
-  { id: 'q3_3', section: 3, text: 'Hedef kitle tanımlarınız net mi?' },
-  { id: 'q3_4', section: 3, text: 'Reklam kampanyalarınıza segmentlere ayırıyor musunuz?' },
-  { id: 'q3_5', section: 3, text: 'A/B testleri yapıyor musunuz?' },
-  { id: 'q3_6', section: 3, text: 'Reklamlarda dönüşüm hedefi belirliyor musunuz?' },
-  { id: 'q3_7', section: 3, text: 'Reklam bütçenizi veriye göre optimize ediyor musunuz?' },
-  { id: 'q3_8', section: 3, text: 'Farklı reklam formatları (video, carousel, lead form) kullanıyor musunuz?' },
-  { id: 'q3_9', section: 3, text: 'Dönüşüm takibi yapabiliyor musunuz (pixel, GA)?' },
-  { id: 'q3_10', section: 3, text: 'Reklam performans raporlarını haftalık/aylık inceliyor musunuz?' },
-  { id: 'q4_1', section: 4, text: 'Web sitenizde blog içerikleri yayınlıyor musunuz?' },
-  { id: 'q4_2', section: 4, text: 'İçerikleriniz belirli bir stratejiye göre mı hazırlanıyor?' },
-  { id: 'q4_3', section: 4, text: 'İçeriklerinizin hedef kitlenizin sorunlarına çözüm sunduğunu düşünüyor musunuz?' },
-  { id: 'q4_4', section: 4, text: 'Videolu içerikler üretiyor musunuz?' },
-  { id: 'q4_5', section: 4, text: 'İçeriklerinizde anahtar kelime optimizasyonu yapıyor musunuz?' },
-  { id: 'q4_6', section: 4, text: 'İçerikleriniz ne sıklıkta güncelleniyor?' },
-  { id: 'q4_7', section: 4, text: 'İçeriğiniz sosyal medya ve e-posta ile destekleniyor mu?' },
-  { id: 'q4_8', section: 4, text: 'İçeriklerinizin performansını ölçüyor musunuz (okunma süresi, hemen çıkma vs.)?' },
-  { id: 'q4_9', section: 4, text: 'Blog yazılarında görsel, infografik gibi unsurlar kullanıyor musunuz?' },
-  { id: 'q4_10', section: 4, text: 'İçerik üretimi için profesyonel destek alıyor musunuz?' },
-  { id: 'q5_1', section: 5, text: 'Hangi pazarlama otomasyon araçlarını kullanıyorsunuz?' },
-  { id: 'q5_2', section: 5, text: 'E-posta pazarlaması yapıyor musunuz?' },
-  { id: 'q5_3', section: 5, text: 'E-posta listenizi segmentlere ayırıyor musunuz?' },
-  { id: 'q5_4', section: 5, text: 'Google Analytics veya benzeri araçlarla sitenizi analiz ediyor musunuz?' },
-  { id: 'q5_5', section: 5, text: 'Ziyaretçi davranışlarını analiz etmek için bir sisteminiz var mı?' },
-  { id: 'q5_6', section: 5, text: 'Sosyal medya zamanlayıcı araçlar (Buffer, Meta Planner vb.) kullanıyor musunuz?' },
-  { id: 'q5_7', section: 5, text: 'CRM veya müşteri yönetim sistemi kullanıyor musunuz?' },
-  { id: 'q5_8', section: 5, text: 'Pazarlama performansınızı raporlayan otomatik sistemler var mı?' },
-  { id: 'q5_9', section: 5, text: 'Online formlarınızdan gelen verileri merkezi bir yerde topluyor musunuz?' },
-  { id: 'q5_10', section: 5, text: 'Dijital pazarlama süreçlerinin tümünü bir sistem dahilinde takip ediyor musunuz?' },
-];
-
-const getSectionTitle = (num) => {
-    const titles = ['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'];
-    return titles[num] || '';
+// Markdown sembollerini temizleyen ve profesyonel HTML'e çeviren gelişmiş fonksiyon
+const cleanMarkdownForEmail = (text) => {
+    if (!text) return "";
+    return text
+        .replace(/### (.*)/g, '<h3 style="color:#f97316; margin-top:25px; font-family:sans-serif; border-bottom:1px solid #ffedd5; padding-bottom:5px;">$1</h3>')
+        .replace(/## (.*)/g, '<h2 style="color:#f97316; margin-top:25px; font-family:sans-serif;">$1</h2>')
+        .replace(/# (.*)/g, '<h1 style="color:#f97316; margin-top:30px; text-align:center; font-family:sans-serif;">$1</h1>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#111;">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em style="color:#444;">$1</em>')
+        .replace(/^\* (.*)/gm, '<li style="margin-bottom:8px; color:#334155; list-style-type:circle; margin-left:20px;">$1</li>')
+        .replace(/\n/g, '<br>');
 };
 
 export const handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
 
   try {
-    const { userInfo, report, scores, answers, selectedSections } = JSON.parse(event.body);
+    const { userInfo, report } = JSON.parse(event.body);
 
     const transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST,
       port: 587,
       secure: false,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
     });
 
-    // --- Admin İçin Detaylı Tablo Hazırlama ---
-    let detailsHTML = `<h2 style="color: #f97316;">Test Sonuç Detayları</h2>`;
-    detailsHTML += `<p><b>Toplam Skor (100 Üzerinden):</b> <span style="font-size: 20px;">${scores?.totalScore || 0}</span></p>`;
-    
-    if (selectedSections && answers) {
-        selectedSections.forEach(sNum => {
-            detailsHTML += `<div style="margin-top: 20px; border-bottom: 2px solid #f97316; padding-bottom: 5px;">
-                <b style="color: #f97316;">Bölüm: ${getSectionTitle(sNum)}</b> (Ham Puan: ${scores?.sectionScores?.[sNum] || 0} / ${scores?.sectionMaxScores?.[sNum] || 0})
-            </div><ul style="list-style: none; padding-left: 0;">`;
-            
-            allQuestions.filter(q => q.section === sNum).forEach(q => {
-                const val = answers[q.id] || 'Yanıt Yok';
-                detailsHTML += `<li style="margin-bottom: 8px; border-left: 3px solid #eee; padding-left: 10px;">
-                    <small style="color: #666;">${q.text}</small><br>
-                    <b>Cevap: ${val} / 5</b>
-                </li>`;
-            });
-            detailsHTML += `</ul>`;
-        });
-    }
+    const formattedReport = cleanMarkdownForEmail(report);
 
+    // Müşteriye giden mail tasarımı
+    const mailToUser = {
+        from: `"METRIQ360 Strateji" <${process.env.EMAIL_USER}>`,
+        to: userInfo.email,
+        subject: `METRIQ360: Stratejik Büyüme Analiz Raporunuz Hazır`,
+        html: `
+            <div style="font-family: sans-serif; max-width: 650px; margin:auto; color:#333; line-height: 1.6; border: 1px solid #eee; padding: 20px; border-radius: 15px;">
+                <div style="text-align:center; padding: 20px 0; border-bottom: 2px solid #f97316; margin-bottom: 20px;">
+                    <h1 style="color: #f97316; margin:0; font-size: 32px; letter-spacing: -1px;">METRIQ<span style="font-weight:normal;">360</span></h1>
+                    <p style="text-transform:uppercase; letter-spacing:3px; color:#999; font-size:11px; margin-top:5px;">Dijital Büyüme Motoru</p>
+                </div>
+                
+                <h2 style="color:#111;">Merhaba Sayın ${userInfo.name},</h2>
+                <p>Dijital pazarlama performansınızı büyük bir titizlikle analiz ettik. İşletmenizin büyüme motorunu tam kapasite çalıştıracak stratejik ön değerlendirme aşağıdadır:</p>
+                
+                <div style="background:#fff7ed; padding:30px; border-radius:20px; border:1px solid #ffedd5; margin:30px 0;">
+                    ${formattedReport}
+                </div>
+
+                <div style="text-align:center; background:#f97316; padding:40px 30px; border-radius:25px; color:white; box-shadow: 0 10px 30px rgba(249,115,22,0.2);">
+                    <h3 style="margin-top:0; font-size: 24px; font-weight: 800; text-transform: uppercase;">SIÇRAMA YAPMAYA HAZIR MISINIZ? 📈</h3>
+                    <p style="opacity: 0.9; font-size: 16px;">Bu verileri gerçek bir satış ve büyüme motoruna dönüştürmek için <strong>Birebir Büyüme Analizi</strong> randevunuzu hemen oluşturun.</p>
+                    <a href="https://wa.me/905379484868?text=Merhaba, Dijital Büyüme Analizimi tamamladım. Birebir randevu almak istiyorum." 
+                       style="background:white; color:#f97316; padding:18px 40px; text-decoration:none; border-radius:12px; font-weight:bold; display:inline-block; margin-top:25px; font-size:18px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                       STRATEJİ RANDEVUSU AL
+                    </a>
+                    <p style="margin-top:25px; font-weight:bold; font-size: 20px;">📞 +90 537 948 48 68</p>
+                </div>
+
+                <div style="margin-top:40px; padding-top:20px; border-top: 1px solid #eee; text-align:center;">
+                    <p style="font-size:14px; color:#111; margin-bottom: 5px;">Saygılarımızla,</p>
+                    <p style="font-weight:bold; color:#f97316; margin:0; font-size:18px;">METRIQ360 Strateji Ekibi</p>
+                    <p style="font-size:12px; color:#999; margin-top:10px;">
+                        <a href="https://www.metriq360.tr" style="color:#f97316; text-decoration:none;">www.metriq360.tr</a> | bilgi@metriq360.tr
+                    </p>
+                </div>
+            </div>
+        `,
+    };
+
+    // Admin maili (Sana gelen)
     const mailToAdmin = {
       from: `"METRIQ360 Sistem" <${process.env.EMAIL_USER}>`,
       to: process.env.ADMIN_EMAIL,
-      subject: `YENİ TEST SONUCU: ${userInfo.name} ${userInfo.surname} (${userInfo.sector})`,
-      html: `
-        <div style="font-family: sans-serif; color: #333;">
-            <h1 style="color: #f97316;">Yeni Bir Analiz Tamamlandı!</h1>
-            <p><b>Müşteri:</b> ${userInfo.name} ${userInfo.surname}</p>
-            <p><b>Sektör:</b> ${userInfo.sector}</p>
-            <p><b>E-posta:</b> ${userInfo.email}</p>
-            <hr>
-            ${detailsHTML}
-            <hr>
-            <h2>AI Tarafından Oluşturulan Rapor:</h2>
-            <div style="background: #fff7ed; padding: 20px; border-radius: 10px;">
-                ${report ? report.replace(/\n/g, '<br>') : 'Rapor detayı bulunamadı.'}
-            </div>
-        </div>
-      `,
-    };
-    
-    const mailToUser = {
-        from: `"METRIQ360 Strateji Ekibi" <${process.env.EMAIL_USER}>`,
-        to: userInfo.email,
-        subject: `METRIQ360: Dijital Pazarlama Sağlık Analiz Raporunuz`,
-        html: `
-            <div style="font-family: sans-serif; max-width: 600px; color: #333;">
-                <h2 style="color: #f97316;">Merhaba Sayın ${userInfo.name},</h2>
-                <p>Dijital pazarlama sağlık testini tamamladığınız için teşekkürler. Sizin için hazırladığımız stratejik özet aşağıdadır:</p>
-                <div style="background: #fff7ed; padding: 20px; border-radius: 12px; border: 1px solid #ffedd5;">
-                    ${report ? report.replace(/\n/g, '<br>') : 'Raporunuz hazırlanıyor...'}
+      subject: `YENİ ANALİZ: ${userInfo.name} ${userInfo.surname} (${userInfo.sector})`,
+      html: `<div style="font-family:sans-serif; color:#333; max-width:700px; line-height:1.6;">
+                <h1 style="color:#f97316;">Yeni Müşteri Analizi Tamamlandı</h1>
+                <p><b>Müşteri:</b> ${userInfo.name} ${userInfo.surname}</p>
+                <p><b>Sektör:</b> ${userInfo.sector}</p>
+                <p><b>E-posta:</b> ${userInfo.email}</p>
+                <hr style="border:1px solid #eee; margin:20px 0;">
+                <div style="background:#f9f9f9; padding:25px; border-radius:15px; border: 1px solid #eee;">
+                    ${formattedReport}
                 </div>
-                <p>Detaylı büyüme stratejisi kurgusu için <a href="https://www.metriq360.com.tr">web sitemizden</a> randevu alabilirsiniz.</p>
-                <hr>
-                <p>Saygılarımızla,<br><b>METRIQ360 Ekibi</b></p>
-            </div>
-        `,
+             </div>`,
     };
 
     await transporter.sendMail(mailToAdmin);
     await transporter.sendMail(mailToUser);
 
-    return { statusCode: 200, body: JSON.stringify({ message: 'Sent' }) };
+    return { statusCode: 200, body: JSON.stringify({ message: 'Success' }) };
   } catch (error) {
+    console.error("Mail Hatası:", error);
     return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
   }
 };
