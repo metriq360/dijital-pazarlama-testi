@@ -4,25 +4,15 @@ import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged }
 import { getFirestore, collection, addDoc } from 'firebase/firestore';
 import ReactMarkdown from 'react-markdown';
 
-// Firebase and App ID are provided by the Canvas environment.
-// Default values are provided for local development.
+// Firebase ve App ID yapılandırması
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-const firebaseConfig = typeof __firebase_config !== 'undefined'
-  ? JSON.parse(__firebase_config)
-  : {
-      apiKey: "AIzaSyC-dummy-local-api-key",
-      authDomain: "your-project-id.firebaseapp.com",
-      projectId: "your-project-id",
-      storageBucket: "your-project-id.appspot.com",
-      messagingSenderId: "123456789012",
-      appId: "1:123456789012:web:abcdef1234567890abcdef",
-      measurementId: "G-XXXXXXXXXX"
-    };
+const firebaseConfig = typeof __firebase_config !== 'undefined' 
+  ? JSON.parse(__firebase_config) 
+  : { apiKey: "" }; 
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-// --- Test Questions and Section Titles ---
+// Sorular listesi
 const allQuestions = [
-  // Bölüm 1: Sosyal Medya Yönetimi
   { id: 'q1_1', section: 1, text: 'Sosyal medya hesaplarınızda ne sıklıkla paylaşım yapıyorsunuz?' },
   { id: 'q1_2', section: 1, text: 'Her platform için ayrı bir strateji uyguluyor musunuz?' },
   { id: 'q1_3', section: 1, text: 'Takipçi sayınız son 6 ayda istikrarlı bir şekilde arttı mı?' },
@@ -33,8 +23,6 @@ const allQuestions = [
   { id: 'q1_8', section: 1, text: 'İçerik takvimi oluşturup gönderileri önceden planlıyor musunuz?' },
   { id: 'q1_9', section: 1, text: 'Rakiplerinizin sosyal medya stratejilerini analiz ediyor musunuz?' },
   { id: 'q1_10', section: 1, text: 'Sosyal medya için dış kaynak ya da ajans desteği alıyor musunuz?' },
-
-  // Bölüm 2: Yerel SEO ve Google Benim İşletmem
   { id: 'q2_1', section: 2, text: 'Google Benim İşletmem (GBP) profiliniz var mı?' },
   { id: 'q2_2', section: 2, text: 'GBP profilinizde adres, telefon ve açık saatler eksiksiz mi?' },
   { id: 'q2_3', section: 2, text: 'GBP üzerinde sık sık içerik (fotoğraf, gönderi) paylaşıyor musunuz?' },
@@ -45,8 +33,6 @@ const allQuestions = [
   { id: 'q2_8', section: 2, text: '“Yakınımdaki [ürün/hizmet]” gibi aramalarda çıkıyor musunuz?' },
   { id: 'q2_9', section: 2, text: 'GBP verilerini (gösterim, tıklama vs.) analiz ediyor musunuz?' },
   { id: 'q2_10', section: 2, text: 'Yerel anahtar kelimelere yönelik stratejiniz var mı?' },
-
-  // Bölüm 3: Reklam ve Kampanya Yönetimi
   { id: 'q3_1', section: 3, text: 'Meta (Facebook/Instagram) reklamları yürütüyor musunuz?' },
   { id: 'q3_2', section: 3, text: 'Google Ads kampanyaları aktif mi?' },
   { id: 'q3_3', section: 3, text: 'Hedef kitle tanımlarınız net mi?' },
@@ -57,8 +43,6 @@ const allQuestions = [
   { id: 'q3_8', section: 3, text: 'Farklı reklam formatları (video, carousel, lead form) kullanıyor musunuz?' },
   { id: 'q3_9', section: 3, text: 'Dönüşüm takibi yapabiliyor musunuz (pixel, GA)?' },
   { id: 'q3_10', section: 3, text: 'Reklam performans raporlarını haftalık/aylık inceliyor musunuz?' },
-
-  // Bölüm 4: İçerik Pazarlaması
   { id: 'q4_1', section: 4, text: 'Web sitenizde blog içerikleri yayınlıyor musunuz?' },
   { id: 'q4_2', section: 4, text: 'İçerikleriniz belirli bir stratejiye göre mı hazırlanıyor?' },
   { id: 'q4_3', section: 4, text: 'İçeriklerinizin hedef kitlenizin sorunlarına çözüm sunduğunu düşünüyor musunuz?' },
@@ -69,8 +53,6 @@ const allQuestions = [
   { id: 'q4_8', section: 4, text: 'İçeriklerinizin performansını ölçüyor musunuz (okunma süresi, hemen çıkma vs.)?' },
   { id: 'q4_9', section: 4, text: 'Blog yazılarında görsel, infografik gibi unsurlar kullanıyor musunuz?' },
   { id: 'q4_10', section: 4, text: 'İçerik üretimi için profesyonel destek alıyor musunuz?' },
-
-  // Bölüm 5: Pazarlama Araçları ve Otomasyon
   { id: 'q5_1', section: 5, text: 'Hangi pazarlama otomasyon araçlarını kullanıyorsunuz?' },
   { id: 'q5_2', section: 5, text: 'E-posta pazarlaması yapıyor musunuz?' },
   { id: 'q5_3', section: 5, text: 'E-posta listenizi segmentlere ayırıyor musunuz?' },
@@ -84,12 +66,11 @@ const allQuestions = [
 ];
 
 function App() {
-  // --- State Management ---
   const [db, setDb] = useState(null);
   const [auth, setAuth] = useState(null);
   const [userId, setUserId] = useState(null);
   const [user, setUser] = useState({ name: '', surname: '', sector: '', email: '' });
-  const [currentStep, setCurrentStep] = useState('form'); // Production-ready state
+  const [currentStep, setCurrentStep] = useState('form');
   const [selectedSections, setSelectedSections] = useState([]);
   const [answers, setAnswers] = useState({});
   const [overallScore, setOverallScore] = useState(0);
@@ -99,308 +80,199 @@ function App() {
   const [shortAdvice, setShortAdvice] = useState('');
   const [reportData, setReportData] = useState('');
   const [reportLoading, setReportLoading] = useState(false);
-  const [isAuthReady, setIsAuthReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [emailStatus, setEmailStatus] = useState('');
 
-  // --- Firebase Initialization and Authentication ---
   useEffect(() => {
-    try {
-      const app = initializeApp(firebaseConfig);
-      const authInstance = getAuth(app);
-      const dbInstance = getFirestore(app);
-      setAuth(authInstance);
-      setDb(dbInstance);
-      onAuthStateChanged(authInstance, async (firebaseUser) => {
-        if (firebaseUser) {
-          setUserId(firebaseUser.uid);
-        } else {
-          try {
-            if (initialAuthToken) {
-              await signInWithCustomToken(authInstance, initialAuthToken);
-            } else {
-              await signInAnonymously(authInstance);
-            }
-          } catch (e) {
-            console.error("Firebase auth error:", e);
-            setError("Kimlik doğrulama başarısız oldu.");
-          }
-        }
-        setIsAuthReady(true);
-        setLoading(false);
-      });
-    } catch (e) {
-      console.error("Firebase init error:", e);
-      setError("Uygulama başlatılamadı.");
-      setLoading(false);
-    }
+    const initFirebase = async () => {
+      try {
+        const app = initializeApp(firebaseConfig);
+        const authInstance = getAuth(app);
+        const dbInstance = getFirestore(app);
+        setAuth(authInstance); setDb(dbInstance);
+        const doAuth = async () => {
+          if (initialAuthToken) await signInWithCustomToken(authInstance, initialAuthToken);
+          else await signInAnonymously(authInstance);
+        };
+        await doAuth();
+        onAuthStateChanged(authInstance, (firebaseUser) => {
+          if (firebaseUser) setUserId(firebaseUser.uid);
+          setLoading(false);
+        });
+      } catch (e) { console.error(e); setLoading(false); }
+    };
+    initFirebase();
   }, []);
 
-  // --- UI Handlers ---
   const handleUserFormSubmit = (e) => {
     e.preventDefault();
     if (!user.name || !user.surname || !user.sector || !user.email) {
-      setError('Lütfen tüm alanları doldurun.');
-      return;
+      setError('Lütfen tüm alanları doldurun.'); return;
     }
-    setError('');
-    setCurrentStep('quiz-select');
+    setError(''); setCurrentStep('quiz-select');
   };
 
-  const handleSectionToggle = (sectionNum) => {
-    setSelectedSections(prev => prev.includes(sectionNum) ? prev.filter(s => s !== sectionNum) : [...prev, sectionNum].sort());
+  const handleSectionToggle = (num) => {
+    setSelectedSections(prev => prev.includes(num) ? prev.filter(s => s !== num) : [...prev, num].sort());
   };
 
   const startQuiz = () => {
-    if (selectedSections.length === 0) {
-      setError('Lütfen en az bir test bölümü seçin.');
-      return;
-    }
-    setError('');
-    const initialAnswers = {};
-    allQuestions.filter(q => selectedSections.includes(q.section)).forEach(q => {
-      initialAnswers[q.id] = undefined;
-    });
-    setAnswers(initialAnswers);
-    setCurrentStep('quiz');
+    if (selectedSections.length === 0) { setError('En az bir alan seçmelisiniz.'); return; }
+    setError(''); setAnswers({}); setCurrentStep('quiz');
   };
 
-  const handleAnswerChange = (questionId, value) => {
-    setAnswers(prev => ({ ...prev, [questionId]: parseInt(value) }));
-  };
+  const handleAnswerChange = (qId, val) => { setAnswers(prev => ({ ...prev, [qId]: val })); };
 
-  // --- Logic Functions ---
   const calculateScore = () => {
     let totalScore = 0, totalMaxScore = 0;
     const sScores = {}, sMaxScores = {};
     selectedSections.forEach(sectionNum => {
-      let sectionCurrentScore = 0;
+      let current = 0;
       const questions = allQuestions.filter(q => q.section === sectionNum);
-      const sectionMaximumScore = questions.length * 5;
-      questions.forEach(q => { sectionCurrentScore += answers[q.id] || 0; });
-      sScores[sectionNum] = sectionCurrentScore;
-      sMaxScores[sectionNum] = sectionMaximumScore;
-      totalScore += sectionCurrentScore;
-      totalMaxScore += sectionMaximumScore;
+      questions.forEach(q => { current += (answers[q.id] || 0); });
+      sScores[sectionNum] = current; sMaxScores[sectionNum] = questions.length * 5;
+      totalScore += current; totalMaxScore += questions.length * 5;
     });
     return { totalScore, totalMaxScore, sectionScores: sScores, sectionMaxScores: sMaxScores };
   };
 
-  const getSectionTitle = (sectionNum) => {
-    const titles = ['','Sosyal Medya Yönetimi','Yerel SEO ve Google Benim İşletmem','Reklam ve Kampanya Yönetimi','İçerik Pazarlaması','Pazarlama Araçları ve Otomasyon'];
-    return titles[sectionNum] || '';
-  };
-
-  // --- Main Logic on Quiz Submission ---
   const handleSubmitQuiz = async () => {
     const scores = calculateScore();
-    setOverallScore(scores.totalScore);
-    setOverallMaxScore(scores.totalMaxScore);
-    setSectionScores(scores.sectionScores);
-    setSectionMaxScores(scores.sectionMaxScores);
-    setCurrentStep('results');
-    setReportLoading(true);
-    setEmailStatus('');
-    setShortAdvice('');
-    setReportData('');
+    setOverallScore(scores.totalScore); setOverallMaxScore(scores.totalMaxScore);
+    setSectionScores(scores.sectionScores); setSectionMaxScores(scores.sectionMaxScores);
+    setCurrentStep('results'); setReportLoading(true);
 
     try {
-      // Call the secure Netlify function to generate reports
-      const response = await fetch('/.netlify/functions/generate-report', {
+      const baseUrl = window.location.origin === 'null' ? '' : window.location.origin;
+      const response = await fetch(`${baseUrl}/.netlify/functions/generate-report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userInfo: user,
-          ...scores,
-          selectedSections
-        }),
+        body: JSON.stringify({ userInfo: user, ...scores, selectedSections }),
       });
+      const data = await response.json();
+      setReportData(data.detailedReport); setShortAdvice(data.shortAdvice);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Server error: ${response.status}`);
-      }
-
-      const { detailedReport, shortAdvice } = await response.json();
-      
-      setReportData(detailedReport);
-      setShortAdvice(shortAdvice);
-
-      // Now send the generated report AND the raw data via email
-      setEmailStatus('Rapor oluşturuldu, e-posta gönderiliyor...');
-      const emailResponse = await fetch('/.netlify/functions/send-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-              userInfo: user, 
-              report: detailedReport,
-              scores: scores,
-              answers: answers,
-              selectedSections: selectedSections
-          }),
+      setEmailStatus('Raporunuz e-postanıza gönderiliyor...');
+      await fetch(`${baseUrl}/.netlify/functions/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userInfo: user, report: data.detailedReport }),
       });
+      setEmailStatus('Rapor başarıyla gönderildi!');
 
-      if (emailResponse.ok) {
-        setEmailStatus('Raporunuz e-posta adresinize başarıyla gönderildi!');
-      } else {
-        setEmailStatus('Rapor oluşturuldu ancak e-posta gönderilemedi.');
-      }
-      
-      // Save data to Firestore
       if (db && userId) {
-        await addDoc(collection(db, `artifacts/${appId}/users/${userId}/quizzes`), {
-          userId,
-          timestamp: new Date(),
-          userInfo: user,
-          ...scores,
-          answers,
-          selectedSections,
-          detailedReport,
-          shortAdvice,
+        await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'quizzes'), {
+          timestamp: new Date(), userInfo: user, ...scores, detailedReport: data.detailedReport
         });
       }
-
-    } catch (err) {
-      console.error("Error during report generation or email sending:", err);
-      setError("Üzgünüz, rapor oluşturulurken veya gönderilirken bir hata oluştu. Lütfen tekrar deneyin.");
-      setReportData("Rapor oluşturulamadı.");
-      setShortAdvice("Tavsiye oluşturulamadı.");
-    } finally {
-      setReportLoading(false);
-    }
+    } catch (err) { setError("Analiz sırasında bir sorun oluştu."); }
+    finally { setReportLoading(false); }
   };
-  
+
   const resetApp = () => {
-      setCurrentStep('form'); 
-      // Reset user-specific data
-      setUser({ name: '', surname: '', sector: '', email: '' });
-      setSelectedSections([]);
-      setAnswers({});
-      setError('');
-      setEmailStatus('');
+    setCurrentStep('form');
+    setUser({ name: '', surname: '', sector: '', email: '' });
+    setSelectedSections([]);
+    setAnswers({});
+    setError('');
+    setEmailStatus('');
+    setReportData('');
   };
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="text-lg font-semibold">Yükleniyor...</div></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-sans bg-white">Yükleniyor...</div>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-100 flex flex-col items-center justify-center p-4 font-sans">
-      <div className="bg-white p-6 md:p-8 rounded-2xl shadow-xl w-full max-w-2xl border-t-4 border-blue-500">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-center text-blue-800 mb-6 tracking-tight">Dijital Pazarlama Sağlık Testi</h1>
-        {error && <p className="text-red-500 text-center mb-4 bg-red-50 p-3 rounded-lg">{error}</p>}
+    <div className="min-h-screen bg-orange-50 flex flex-col items-center justify-center p-4 font-sans text-slate-900">
+      <div className="bg-white p-6 md:p-10 rounded-3xl shadow-2xl w-full max-w-2xl border-t-8 border-orange-500">
+        {/* LOGO: Büyük Harf METRIQ360 ve IQ Vurgusu */}
+        <h1 className="text-3xl md:text-5xl font-black text-center text-slate-900 mb-2 tracking-tight uppercase">
+          METR<span className="text-orange-500 relative inline-block text-4xl md:text-6xl mx-1">
+            IQ
+            <span className="absolute -bottom-1 left-0 w-full h-1.5 bg-orange-400 rounded-full shadow-sm"></span>
+          </span>360
+        </h1>
+        <p className="text-center text-slate-500 font-bold mb-8 uppercase tracking-widest text-[10px] md:text-xs">Dijital Pazarlama Sağlık Testi</p>
         
+        {error && <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6 text-sm border-l-4 border-red-500 font-bold">{error}</div>}
+
         {currentStep === 'form' && (
-          <form onSubmit={handleUserFormSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Adınız</label>
-              <input type="text" id="name" value={user.name} onChange={(e) => setUser({ ...user, name: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Adınızı girin" required />
-            </div>
-            <div>
-              <label htmlFor="surname" className="block text-sm font-medium text-gray-700 mb-1">Soyadınız</label>
-              <input type="text" id="surname" value={user.surname} onChange={(e) => setUser({ ...user, surname: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Soyadınızı girin" required />
-            </div>
-            <div>
-                <label htmlFor="sector" className="block text-sm font-medium text-gray-700 mb-1">Sektörünüz</label>
-                <input type="text" id="sector" value={user.sector} onChange={(e) => setUser({ ...user, sector: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Ör: E-ticaret, Hizmet" required />
-            </div>
-            <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">E-posta Adresiniz</label>
-                <input type="email" id="email" value={user.email} onChange={(e) => setUser({ ...user, email: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="ornek@eposta.com" required />
-            </div>
-            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition transform hover:scale-105">Teste Başla</button>
+          <form onSubmit={handleUserFormSubmit} className="space-y-4">
+            <input type="text" placeholder="Adınız" value={user.name} onChange={(e)=>setUser({...user, name: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition" required />
+            <input type="text" placeholder="Soyadınız" value={user.surname} onChange={(e)=>setUser({...user, surname: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition" required />
+            <input type="text" placeholder="Sektörünüz" value={user.sector} onChange={(e)=>setUser({...user, sector: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition" required />
+            <input type="email" placeholder="E-posta Adresiniz" value={user.email} onChange={(e)=>setUser({...user, email: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition" required />
+            <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-4 rounded-xl shadow-lg transition transform hover:-translate-y-1 uppercase tracking-widest">Teste Başla</button>
           </form>
         )}
-        
+
         {currentStep === 'quiz-select' && (
           <div className="space-y-4">
-            <h2 className="text-2xl font-semibold text-gray-800 text-center mb-4">Lütfen çözmek istediğiniz test bölümlerini seçin:</h2>
-            {[1, 2, 3, 4, 5].map(sectionNum => (
-              <label key={sectionNum} className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg shadow-sm cursor-pointer hover:bg-blue-50 border-2 border-transparent has-[:checked]:bg-blue-100 has-[:checked]:border-blue-400 transition">
-                <input type="checkbox" checked={selectedSections.includes(sectionNum)} onChange={() => handleSectionToggle(sectionNum)} className="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500" />
-                <span className="text-lg font-medium text-gray-800">Bölüm {sectionNum}: {getSectionTitle(sectionNum)}</span>
+            <h2 className="text-xl font-bold text-slate-800 mb-4 text-center">Analiz Alanlarını Seçin</h2>
+            {[1, 2, 3, 4, 5].map(num => (
+              <label key={num} className="flex items-center p-4 bg-slate-50 rounded-2xl border-2 border-transparent hover:border-orange-300 cursor-pointer transition has-[:checked]:bg-orange-50 has-[:checked]:border-orange-500">
+                <input type="checkbox" checked={selectedSections.includes(num)} onChange={() => handleSectionToggle(num)} className="hidden" />
+                <span className={`text-lg font-semibold ${selectedSections.includes(num) ? 'text-orange-600' : 'text-slate-700'}`}>{['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'][num]}</span>
               </label>
             ))}
-            <button onClick={startQuiz} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition transform hover:scale-105 mt-6">Seçilen Bölümlerle Teste Başla</button>
-            <button onClick={() => { setCurrentStep('form'); setSelectedSections([]); setError(''); }} className="w-full bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg shadow-md transition mt-2">Geri Dön</button>
+            <button onClick={startQuiz} className="w-full bg-orange-500 text-white font-black py-4 rounded-xl mt-6 shadow-md hover:bg-orange-600 transition uppercase tracking-widest">Sorulara Geç</button>
           </div>
         )}
 
         {currentStep === 'quiz' && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-semibold text-gray-800 text-center mb-4">Seçilen Bölümlerdeki Sorular:</h2>
-            {selectedSections.map(sectionNum => (
-              <div key={`section-quiz-${sectionNum}`}>
-                <h3 className="text-xl font-bold text-purple-700 mb-3 mt-6">Bölüm {sectionNum}: {getSectionTitle(sectionNum)}</h3>
-                {allQuestions.filter(q => q.section === sectionNum).map((q, index) => (
-                  <div key={q.id} className="bg-gray-50 p-5 rounded-lg shadow-sm border mb-4">
-                    <p className="text-lg font-medium text-gray-800 mb-3">Soru {index + 1}. {q.text}</p>
-                    <div className="flex justify-between items-center space-x-2">
-                      {[1, 2, 3, 4, 5].map(value => (
-                        <label key={value} className="flex flex-col items-center cursor-pointer text-gray-700 p-2 rounded-md hover:bg-gray-200">
-                          <input type="radio" name={q.id} value={value} checked={answers[q.id] === value} onChange={() => handleAnswerChange(q.id, value)} className="form-radio h-5 w-5 text-blue-600" required />
-                          <span className="mt-1 text-sm font-medium">{value}</span>
-                        </label>
+          <div className="space-y-8">
+            {selectedSections.map(sNum => (
+              <div key={sNum} className="space-y-4">
+                <h3 className="text-lg font-black text-slate-800 border-b-2 border-orange-100 pb-2 uppercase tracking-tight">{['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'][sNum]}</h3>
+                {allQuestions.filter(q => q.section === sNum).map((q, idx) => (
+                  <div key={q.id} className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                    <p className="font-bold text-slate-800 mb-4 text-sm">{idx + 1}. {q.text}</p>
+                    <div className="flex justify-between gap-1 md:gap-2">
+                      {[1, 2, 3, 4, 5].map(v => (
+                        <button key={v} onClick={() => handleAnswerChange(q.id, v)} className={`flex-1 py-3 rounded-xl font-black text-sm transition ${answers[q.id] === v ? 'bg-orange-500 text-white shadow-md' : 'bg-white text-slate-400 hover:bg-slate-100 border'}`}>{v}</button>
                       ))}
                     </div>
-                    <div className="flex justify-between text-xs text-gray-500 mt-2 px-1"><span>Hiç Yok/Kötü</span><span>Mükemmel</span></div>
                   </div>
                 ))}
               </div>
             ))}
-            <div className="flex flex-col sm:flex-row justify-between mt-8 gap-4">
-              <button onClick={() => setCurrentStep('quiz-select')} className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg shadow-md transition">Bölüm Seçimine Dön</button>
-              <button onClick={handleSubmitQuiz} disabled={allQuestions.filter(q => selectedSections.includes(q.section)).some(q => answers[q.id] === undefined)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed">Testi Bitir ve Sonuçları Gör</button>
-            </div>
+            <button onClick={handleSubmitQuiz} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-xl shadow-lg transition uppercase tracking-widest">Testi Bitir</button>
           </div>
         )}
 
         {currentStep === 'results' && (
           <div className="space-y-6 text-center">
-            <h2 className="text-3xl font-bold text-blue-700 mb-4">Test Sonuçlarınız</h2>
-            <p className="text-2xl text-gray-800">Genel Puanınız: <span className="font-extrabold text-blue-600">{overallScore}</span> / {overallMaxScore}</p>
-            {selectedSections.length > 1 && (
-              <div className="bg-gray-50 p-6 rounded-xl shadow-inner border text-left">
-                <h3 className="text-xl font-semibold text-gray-800 mb-4 text-center">Bölüm Bazlı Puanlar</h3>
-                <ul className="space-y-2">{selectedSections.map(sectionNum => (<li key={`section-score-${sectionNum}`} className="text-gray-700 flex justify-between"><strong>{getSectionTitle(sectionNum)}:</strong><span className="font-bold">{sectionScores[sectionNum]} / {sectionMaxScores[sectionNum]}</span></li>))}</ul>
-              </div>
-            )}
-            <div className="bg-blue-50 p-6 rounded-xl shadow-inner border">
-              <h3 className="text-xl font-semibold text-blue-800 mb-3">Hızlı Tavsiye</h3>
-              <p className="text-gray-700 italic">{shortAdvice}</p>
-            </div>
-            <div className="bg-purple-50 p-6 rounded-xl shadow-inner border mt-6">
-              <h3 className="text-xl font-semibold text-purple-800 mb-3">Detaylı Rapor ve Stratejiniz</h3>
-              {reportLoading && (
-                <div className="flex flex-col items-center justify-center p-4">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
-                  <p className="mt-4 text-gray-600">Raporunuz oluşturuluyor, lütfen bekleyin...</p>
-                </div>
-              )}
-              {!reportLoading && (
-                <div className="text-left text-gray-700 max-w-none prose prose-p:my-2 prose-h3:text-lg"><ReactMarkdown>{reportData}</ReactMarkdown></div>
-              )}
-            </div>
-            <div className="bg-green-50 p-4 rounded-xl shadow-inner border mt-6">
-                <p className="text-green-800 font-semibold">{emailStatus}</p>
-            </div>
-            
-            {/* --- WHATSAPP SUPPORT BOX --- */}
-            <div className="bg-orange-50 p-4 rounded-xl shadow-inner border border-orange-200 mt-6 text-center">
-                <p className="text-orange-800 font-medium">Raporunuz hakkında daha detaylı görüşmek veya bir sorun bildirmek için bize WhatsApp'tan ulaşabilirsiniz.</p>
-                <a 
-                    href="https://wa.me/905379484868?text=Merhaba,%20Dijital%20Pazarlama%20Testi%20raporumla%20ilgili%20görüşmek%20istiyorum."
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 inline-flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232"/>
-                    </svg>
-                    WhatsApp'tan İletişime Geç
-                </a>
+            <div className="bg-slate-800 text-white p-8 rounded-3xl shadow-inner">
+              <h2 className="text-xs opacity-70 uppercase tracking-[0.3em] font-black mb-2">Dijital Sağlık Skoru</h2>
+              <div className="text-6xl font-black">{overallScore} <span className="text-2xl opacity-40">/ {overallMaxScore}</span></div>
             </div>
 
-            <button onClick={resetApp} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition mt-6">Yeni Bir Test Yap</button>
+            <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100">
+              <p className="italic text-orange-900 font-bold text-sm">"{shortAdvice || 'Analiz ediliyor...'}"</p>
+            </div>
+
+            <div className="text-left bg-slate-50 p-6 rounded-3xl border border-slate-100">
+              <h3 className="text-xl font-black text-slate-900 mb-4 flex items-center gap-2 underline decoration-orange-500">📍 Stratejik Ön Analiz</h3>
+              {reportLoading ? (
+                <div className="flex flex-col items-center py-10 opacity-50 text-sm font-bold animate-pulse italic text-orange-600 text-center w-full">Yapay Zeka firmanızı analiz ediyor...</div>
+              ) : (
+                <div className="prose prose-orange max-w-none text-slate-700 leading-relaxed text-sm md:text-base">
+                  <ReactMarkdown>{reportData || 'Rapor hazırlanıyor...'}</ReactMarkdown>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-emerald-50 p-3 rounded-xl text-emerald-800 font-black text-[10px] border border-emerald-200 uppercase tracking-widest">{emailStatus || 'Analiziniz kayıt altına alındı.'}</div>
+
+            <div className="bg-orange-500 p-8 rounded-3xl shadow-2xl border-4 border-white text-white">
+              <h4 className="font-black text-2xl mb-2 uppercase">Birebir Büyüme Analizi 📈</h4>
+              <p className="text-orange-50 font-medium mb-6 text-sm">Bu verileri firmanızın gerçek büyüme motoruna dönüştürmek için randevunuzu hemen oluşturun.</p>
+              <a href="https://wa.me/905379484868?text=Merhaba, Dijital Pazarlama Sağlık Testimi tamamladım. Rapor verilerime göre birebir büyüme analizi randevusu almak istiyorum." target="_blank" rel="noreferrer" className="flex items-center justify-center gap-3 bg-white text-orange-600 font-black py-4 px-6 rounded-2xl shadow-xl hover:bg-slate-100 transition transform hover:scale-105 uppercase tracking-widest text-sm">
+                RANDEVU OLUŞTUR
+              </a>
+            </div>
+
+            <button onClick={resetApp} className="text-slate-400 font-bold hover:text-slate-600 transition underline underline-offset-4 text-xs">Yeni Test Başlat</button>
           </div>
         )}
       </div>
