@@ -1,14 +1,14 @@
 import nodemailer from 'nodemailer';
 
-// Markdown karakterlerini e-posta için temizleyen yardımcı fonksiyon
-const cleanMarkdownForEmail = (text) => {
+// Markdown'u temiz HTML'e çeviren fonksiyon
+const formatForEmail = (text) => {
     return text
         .replace(/### (.*)/g, '<h3 style="color:#f97316; margin-top:20px; font-family:sans-serif;">$1</h3>')
-        .replace(/## (.*)/g, '<h2 style="color:#f97316; margin-top:20px; font-family:sans-serif;">$1</h2>')
-        .replace(/# (.*)/g, '<h1 style="color:#f97316; margin-top:20px; font-family:sans-serif;">$1</h1>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/^\* (.*)/gm, '<li>$1</li>')
+        .replace(/## (.*)/g, '<h2 style="color:#f97316; margin-top:25px; font-family:sans-serif;">$1</h2>')
+        .replace(/# (.*)/g, '<h1 style="color:#f97316; margin-top:30px; text-align:center;">$1</h1>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#111;">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em style="color:#444;">$1</em>')
+        .replace(/^\* (.*)/gm, '<li style="margin-bottom:8px;">$1</li>')
         .replace(/\n/g, '<br>');
 };
 
@@ -16,55 +16,51 @@ export const handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
 
   try {
-    const { userInfo, report, scores, answers, selectedSections } = JSON.parse(event.body);
+    const { userInfo, report } = JSON.parse(event.body);
 
     const transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST,
       port: 587,
       secure: false,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
     });
 
-    const formattedReport = cleanMarkdownForEmail(report);
+    const cleanReport = formatForEmail(report);
 
     const mailToAdmin = {
-      from: `"METRIQ360 Sistem" <${process.env.EMAIL_USER}>`,
+      from: `"METRIQ360 Analiz" <${process.env.EMAIL_USER}>`,
       to: process.env.ADMIN_EMAIL,
-      subject: `Yeni Sağlık Testi: ${userInfo.name} ${userInfo.surname}`,
-      html: `
-        <div style="font-family:sans-serif; color:#333; line-height:1.6;">
-            <h1 style="color:#f97316;">Yeni Analiz Tamamlandı</h1>
-            <p><b>Müşteri:</b> ${userInfo.name} ${userInfo.surname} (${userInfo.sector})</p>
-            <p><b>E-posta:</b> ${userInfo.email}</p>
-            <hr style="border:1px solid #eee;">
-            <div style="background:#fafafa; padding:20px; border-radius:10px;">
-                ${formattedReport}
-            </div>
-        </div>
-      `,
+      subject: `YENİ MÜŞTERİ: ${userInfo.name} ${userInfo.surname} (${userInfo.sector})`,
+      html: `<div style="font-family:sans-serif; color:#333; max-width:700px; line-height:1.6;">
+                <h1 style="color:#f97316;">Yeni Analiz Tamamlandı</h1>
+                <p><b>Müşteri:</b> ${userInfo.name} ${userInfo.surname}</p>
+                <p><b>Sektör:</b> ${userInfo.sector}</p>
+                <p><b>E-posta:</b> ${userInfo.email}</p>
+                <hr style="border:1px solid #eee; margin:20px 0;">
+                <div style="background:#f9f9f9; padding:25px; border-radius:15px; border:1px solid #eee;">${cleanReport}</div>
+             </div>`,
     };
     
     const mailToUser = {
         from: `"METRIQ360 Strateji" <${process.env.EMAIL_USER}>`,
         to: userInfo.email,
-        subject: `METRIQ360: Dijital Pazarlama Analiz Raporunuz`,
+        subject: `METRIQ360: Stratejik Analiz Raporunuz Hazır`,
         html: `
-            <div style="font-family:sans-serif; max-width:600px; margin:auto; color:#333;">
-                <h2 style="color:#f97316;">Merhaba Sayın ${userInfo.name},</h2>
-                <p>Dijital pazarlama sağlık testini tamamladığınız için teşekkürler. Sektörünüze özel stratejik ön analiz raporunuz aşağıdadır:</p>
-                <div style="background:#fff7ed; padding:25px; border-radius:15px; border:1px solid #ffedd5; margin:20px 0;">
-                    ${formattedReport}
+            <div style="font-family: sans-serif; max-width: 650px; margin:auto; color:#333; line-height: 1.6;">
+                <div style="text-align:center; padding:20px 0;">
+                    <h1 style="color: #f97316; margin:0; font-size:32px;">METRIQ360</h1>
+                    <p style="text-transform:uppercase; letter-spacing:3px; color:#999; font-size:11px;">Dijital Büyüme Motoru</p>
                 </div>
-                <div style="text-align:center; background:#f97316; padding:30px; border-radius:20px; color:white;">
-                    <h3 style="margin-top:0;">BİREBİR BÜYÜME ANALİZİ 📈</h3>
-                    <p>Potansiyelinizi gerçeğe dönüştürmek için randevunuzu hemen oluşturun.</p>
-                    <a href="https://wa.me/905379484868" style="background:white; color:#f97316; padding:12px 25px; text-decoration:none; border-radius:8px; font-weight:bold; display:inline-block; margin-top:10px;">RANDEVU OLUŞTUR</a>
-                    <p style="margin-top:15px; font-weight:bold;">📞 +90 537 948 48 68</p>
+                <h2 style="color:#111;">Merhaba Sayın ${userInfo.name},</h2>
+                <p>Sağlık testi ön analizinizi tamamladık. Sektörünüze özel hazırladığımız stratejik özet aşağıdadır:</p>
+                <div style="background:#fff7ed; padding:30px; border-radius:20px; border:1px solid #ffedd5; margin:30px 0;">${cleanReport}</div>
+                <div style="text-align:center; background:#f97316; padding:35px; border-radius:25px; color:white; box-shadow:0 10px 30px rgba(249,115,22,0.2);">
+                    <h3 style="margin-top:0; font-size:22px;">BİREBİR STRATEJİ ANALİZİ 📈</h3>
+                    <p>Gizli potansiyelinizi satış motoruna dönüştürmek için ücretsiz randevunuzu hemen oluşturun.</p>
+                    <a href="https://wa.me/905379484868" style="background:white; color:#f97316; padding:15px 35px; text-decoration:none; border-radius:12px; font-weight:bold; display:inline-block; margin-top:20px; font-size:16px;">RANDEVU AL</a>
+                    <p style="margin-top:20px; font-weight:bold; font-size:18px;">📞 +90 537 948 48 68</p>
                 </div>
-                <p style="text-align:center; font-size:12px; color:#999; margin-top:30px;">Saygılarımızla, <br> <b>METRIQ360 Ekibi</b></p>
+                <p style="text-align:center; font-size:12px; color:#aaa; margin-top:40px;">Saygılarımızla, <br> <b>METRIQ360 Ekibi</b></p>
             </div>
         `,
     };
@@ -74,6 +70,7 @@ export const handler = async (event) => {
 
     return { statusCode: 200, body: JSON.stringify({ message: 'Success' }) };
   } catch (error) {
+    console.error("Mail Hatası:", error);
     return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
   }
 };
