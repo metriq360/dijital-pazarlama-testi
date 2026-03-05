@@ -4,14 +4,10 @@ import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged }
 import { getFirestore, collection, addDoc } from 'firebase/firestore';
 import ReactMarkdown from 'react-markdown';
 
-// Firebase and App ID setup
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-const firebaseConfig = typeof __firebase_config !== 'undefined' 
-  ? JSON.parse(__firebase_config) 
-  : { apiKey: "" }; 
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "" }; 
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-// Question Bank
 const allQuestions = [
   { id: 'q1_1', section: 1, text: 'Sosyal medya hesaplarınızda ne sıklıkla paylaşım yapıyorsunuz?' },
   { id: 'q1_2', section: 1, text: 'Her platform için ayrı bir strateji uyguluyor musunuz?' },
@@ -108,7 +104,7 @@ function App() {
   const handleUserFormSubmit = (e) => {
     e.preventDefault();
     if (!user.name || !user.surname || !user.sector || !user.email) {
-      setError('Lütfen tüm alanları doldurun.'); return;
+      setError('Lütfen tüm alanları eksiksiz doldurun.'); return;
     }
     setError(''); setCurrentStep('quiz-select');
   };
@@ -146,7 +142,7 @@ function App() {
     try {
       const baseUrl = window.location.origin === 'null' ? '' : window.location.origin;
       
-      // 1. Generate Report
+      // AI Raporu Al
       const reportResponse = await fetch(`${baseUrl}/.netlify/functions/generate-report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -155,7 +151,7 @@ function App() {
       const data = await reportResponse.json();
       setReportData(data.detailedReport); setShortAdvice(data.shortAdvice);
 
-      // 2. Send detailed Email
+      // E-postayı Gönder (Tüm ham verilerle)
       setEmailStatus('Raporunuz e-postanıza gönderiliyor...');
       await fetch(`${baseUrl}/.netlify/functions/send-email`, {
         method: 'POST',
@@ -189,12 +185,12 @@ function App() {
     setReportData('');
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-sans bg-white">Yükleniyor...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-sans bg-white text-orange-500 font-bold">Yükleniyor...</div>;
 
   return (
     <div className="min-h-screen bg-orange-50 flex flex-col items-center justify-center p-4 font-sans text-slate-900">
       <div className="bg-white p-6 md:p-10 rounded-3xl shadow-2xl w-full max-w-2xl border-t-8 border-orange-500 text-center">
-        {/* LOGO: Uppercase and IQ emphasis */}
+        {/* LOGO: Büyük Harf ve IQ Vurgusu */}
         <h1 className="text-3xl md:text-5xl font-black text-slate-900 mb-2 tracking-tight uppercase">
           METR<span className="text-orange-500 relative inline-block text-4xl md:text-6xl mx-1">
             IQ
@@ -203,7 +199,7 @@ function App() {
         </h1>
         <p className="text-slate-500 font-bold mb-8 uppercase tracking-widest text-[10px] md:text-xs">Dijital Pazarlama Sağlık Testi</p>
         
-        {error && <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6 text-sm border-l-4 border-red-500 font-bold">{error}</div>}
+        {error && <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6 text-sm border-l-4 border-red-500 font-bold text-left">{error}</div>}
 
         {currentStep === 'form' && (
           <form onSubmit={handleUserFormSubmit} className="space-y-4 text-left">
@@ -236,7 +232,7 @@ function App() {
                 {allQuestions.filter(q => q.section === sNum).map((q, idx) => (
                   <div key={q.id} className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <p className="font-bold text-slate-800 mb-4 text-sm">{idx + 1}. {q.text}</p>
-                    <div className="flex justify-between gap-1 md:gap-2 text-center">
+                    <div className="flex justify-between gap-1 md:gap-2">
                       {[1, 2, 3, 4, 5].map(v => (
                         <button key={v} onClick={() => handleAnswerChange(q.id, v)} className={`flex-1 py-3 rounded-xl font-black text-sm transition ${answers[q.id] === v ? 'bg-orange-500 text-white shadow-md' : 'bg-white text-slate-400 hover:bg-slate-100 border'}`}>{v}</button>
                       ))}
@@ -251,7 +247,7 @@ function App() {
 
         {currentStep === 'results' && (
           <div className="space-y-6">
-            <div className="bg-slate-800 text-white p-8 rounded-3xl shadow-inner">
+            <div className="bg-slate-900 text-white p-8 rounded-3xl shadow-inner">
               <h2 className="text-xs opacity-70 uppercase tracking-[0.3em] font-black mb-2">Dijital Sağlık Skoru</h2>
               <div className="text-6xl font-black">{overallScore} <span className="text-2xl opacity-40">/ {overallMaxScore}</span></div>
             </div>
