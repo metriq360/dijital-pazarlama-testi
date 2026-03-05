@@ -4,10 +4,12 @@ import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged }
 import { getFirestore, collection, addDoc } from 'firebase/firestore';
 import ReactMarkdown from 'react-markdown';
 
+// Firebase ve App ID yapılandırması
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "" }; 
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
+// Soru Bankası
 const allQuestions = [
   { id: 'q1_1', section: 1, text: 'Sosyal medya hesaplarınızda ne sıklıkla paylaşım yapıyorsunuz?' },
   { id: 'q1_2', section: 1, text: 'Her platform için ayrı bir strateji uyguluyor musunuz?' },
@@ -81,6 +83,17 @@ function App() {
   const [emailStatus, setEmailStatus] = useState('');
 
   useEffect(() => {
+    // FAVICON VE BAŞLIK GÜNCELLEMESİ
+    const updateFavicon = () => {
+      const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
+      link.type = 'image/png';
+      link.rel = 'icon';
+      link.href = 'https://i.imgur.com/DMqrCwJ.png'; // Doğrudan görsel linki
+      document.getElementsByTagName('head')[0].appendChild(link);
+      document.title = "Metriq360 | Dijital Pazarlama Sağlık Testi";
+    };
+    updateFavicon();
+
     const initFirebase = async () => {
       try {
         const app = initializeApp(firebaseConfig);
@@ -141,40 +154,36 @@ function App() {
 
     try {
       const baseUrl = window.location.origin === 'null' ? '' : window.location.origin;
-      
       const reportResponse = await fetch(`${baseUrl}/.netlify/functions/generate-report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userInfo: user, ...scores, selectedSections }),
       });
       if (!reportResponse.ok) throw new Error("AI Rapor Hatası");
-      const reportResData = await reportResponse.json();
-      setReportData(reportResData.detailedReport); setShortAdvice(reportResData.shortAdvice);
+      const data = await reportResponse.json();
+      setReportData(data.detailedReport); setShortAdvice(data.shortAdvice);
 
       setEmailStatus('Raporunuz e-postanıza gönderiliyor...');
       const emailResponse = await fetch(`${baseUrl}/.netlify/functions/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            userInfo: user, report: reportResData.detailedReport, 
-            scores, answers, selectedSections 
-        }),
+        body: JSON.stringify({ userInfo: user, report: data.detailedReport, scores, answers, selectedSections }),
       });
       if (emailResponse.ok) setEmailStatus('Rapor e-postanıza başarıyla gönderildi!');
-      else setEmailStatus('Rapor hazırlandı ancak e-posta servisinde bir hata oluştu.');
+      else setEmailStatus('Rapor hazırlandı ancak e-posta gönderilemedi.');
 
       if (db && userId) {
         await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'quizzes'), {
-          timestamp: new Date(), userInfo: user, ...scores, detailedReport: reportResData.detailedReport
+          timestamp: new Date(), userInfo: user, ...scores, detailedReport: data.detailedReport
         });
       }
-    } catch (err) { setError("Hata oluştu, lütfen tekrar deneyin."); }
+    } catch (err) { setError("Analiz sırasında bir sorun oluştu."); }
     finally { setReportLoading(false); }
   };
 
   const resetApp = () => { setCurrentStep('form'); setUser({ name: '', surname: '', sector: '', email: '' }); setSelectedSections([]); setAnswers({}); setError(''); setEmailStatus(''); setReportData(''); };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-sans bg-white text-orange-500 font-black tracking-widest animate-pulse">METRIQ360 YÜKLENİYOR...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-sans bg-white text-orange-500 font-bold italic tracking-widest animate-pulse">METRIQ360 YÜKLENİYOR...</div>;
 
   return (
     <div className="min-h-screen bg-orange-50 flex flex-col items-center justify-center p-4 font-sans text-slate-900">
@@ -253,6 +262,7 @@ function App() {
               <h4 className="font-black text-2xl mb-2 uppercase italic">BİREBİR BÜYÜME ANALİZİ 📈</h4>
               <p className="text-orange-50 font-medium mb-6 text-sm">Gerçek büyüme motoru kurgusu için randevunuzu hemen oluşturun.</p>
               <a href="https://wa.me/905379484868?text=Merhaba, Dijital Pazarlama Sağlık Testimi tamamladım. Rapor verilerime göre birebir strateji analizi randevusu almak istiyorum." target="_blank" rel="noreferrer" className="flex items-center justify-center gap-3 bg-white text-orange-600 font-black py-4 px-6 rounded-2xl shadow-xl hover:bg-slate-100 transition transform hover:scale-105 uppercase tracking-widest text-sm">STRATEJİ RANDEVUSU AL</a>
+              <p className="mt-4 font-black text-sm">📞 +90 537 948 48 68</p>
             </div>
             <button onClick={resetApp} className="text-slate-400 font-bold hover:text-slate-600 transition underline text-xs decoration-orange-300">Yeni Test Başlat</button>
           </div>
