@@ -4,12 +4,12 @@ import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged }
 import { getFirestore, collection, addDoc } from 'firebase/firestore';
 import ReactMarkdown from 'react-markdown';
 
-// Global değişkenlerden gelen Firebase yapılandırması
+// Firebase ve App ID yapılandırması
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-// Soru Bankası
+// Soru Bankası (Tüm Sorular)
 const allQuestions = [
   { id: 'q1_1', section: 1, text: 'Sosyal medya hesaplarınızda ne sıklıkla paylaşım yapıyorsunuz?' },
   { id: 'q1_2', section: 1, text: 'Her platform için ayrı bir strateji uyguluyor musunuz?' },
@@ -84,20 +84,20 @@ function App() {
 
   useEffect(() => {
     // 1. Favicon ve Başlık Güncelleme
-    const updateSiteMetadata = () => {
+    const updateSiteBranding = () => {
       const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
       link.type = 'image/png';
       link.rel = 'icon';
       link.href = 'https://i.imgur.com/DMqrCwJ.png';
       document.getElementsByTagName('head')[0].appendChild(link);
-      document.title = "METRIQ360 | Büyüme Analiz Testi";
+      document.title = "METRIQ360 | Büyüme Analizi";
     };
-    updateSiteMetadata();
+    updateSiteBranding();
 
     // 2. Firebase Başlatma
     const initFirebase = async () => {
+      if (!firebaseConfigStr) { setLoading(false); return; }
       try {
-        if (!firebaseConfigStr) { setLoading(false); return; }
         const config = JSON.parse(firebaseConfigStr);
         const app = initializeApp(config);
         const authInstance = getAuth(app);
@@ -114,7 +114,7 @@ function App() {
           setLoading(false);
         });
       } catch (e) {
-        console.warn("Firebase Modülü Atlandı.");
+        console.warn("Firebase atlandı (Offline Mod).");
         setLoading(false);
       }
     };
@@ -124,7 +124,7 @@ function App() {
   const handleUserFormSubmit = (e) => {
     e.preventDefault();
     if (!user.name || !user.surname || !user.sector || !user.email) {
-      setError('Lütfen tüm alanları eksiksiz doldurun.'); return;
+      setError('Lütfen tüm alanları doldurun.'); return;
     }
     setError(''); setCurrentStep('quiz-select');
   };
@@ -134,7 +134,7 @@ function App() {
   };
 
   const startQuiz = () => {
-    if (selectedSections.length === 0) { setError('En az bir alan seçmelisiniz.'); return; }
+    if (selectedSections.length === 0) { setError('Lütfen en az bir alan seçin.'); return; }
     setError(''); setAnswers({}); setCurrentStep('quiz');
   };
 
@@ -162,40 +162,46 @@ function App() {
     try {
       const baseUrl = window.location.origin === 'null' ? '' : window.location.origin;
       
+      // 1. AI Raporu Al
       const reportResponse = await fetch(`${baseUrl}/.netlify/functions/generate-report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userInfo: user, ...scores, selectedSections }),
       });
       
-      if (!reportResponse.ok) throw new Error("Rapor şu an oluşturulamıyor. Lütfen tekrar deneyin.");
+      if (!reportResponse.ok) {
+        const errorData = await reportResponse.json();
+        throw new Error(errorData.error || "AI Servisi şu an cevap vermiyor.");
+      }
       const data = await reportResponse.json();
       setReportData(data.detailedReport); 
       setShortAdvice(data.shortAdvice);
 
-      setEmailStatus('Raporunuz hazırlanıyor ve e-postanıza yollanıyor...');
+      // 2. Mail Gönder
+      setEmailStatus('Raporunuz hazırlanıyor ve e-postanıza gönderiliyor...');
       const emailResponse = await fetch(`${baseUrl}/.netlify/functions/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userInfo: user, report: data.detailedReport, scores, answers, selectedSections }),
       });
-      
-      if (emailResponse.ok) setEmailStatus('Rapor e-postanıza başarıyla ulaştırıldı!');
-      else setEmailStatus('Rapor hazırlandı ancak mail servisinde bir gecikme yaşandı.');
+      if (emailResponse.ok) setEmailStatus('Rapor başarıyla gönderildi!');
+      else setEmailStatus('Rapor oluşturuldu ancak e-posta gönderilemedi.');
 
+      // 3. Kayıt (Firebase)
       if (db && userId) {
         await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'quizzes'), {
           timestamp: new Date(), userInfo: user, ...scores, detailedReport: data.detailedReport
         });
       }
     } catch (err) { 
-      setError(err.message); 
+      console.error("Hata Detayı:", err);
+      setError(err.message || "Bir hata oluştu. Lütfen tekrar deneyin."); 
     } finally { setReportLoading(false); }
   };
 
   const resetApp = () => { setCurrentStep('form'); setUser({ name: '', surname: '', sector: '', email: '' }); setSelectedSections([]); setAnswers({}); setError(''); setEmailStatus(''); setReportData(''); };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-sans text-orange-500 font-black tracking-widest animate-pulse italic">METRIQ360 YÜKLENİYOR...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-sans text-orange-500 font-black tracking-widest animate-pulse">METRIQ360...</div>;
 
   return (
     <div className="min-h-screen bg-orange-50 flex flex-col items-center justify-center p-4 font-sans text-slate-900">
@@ -211,7 +217,7 @@ function App() {
           <form onSubmit={handleUserFormSubmit} className="space-y-4 text-left">
             <input type="text" placeholder="Adınız" value={user.name} onChange={(e)=>setUser({...user, name: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition" required />
             <input type="text" placeholder="Soyadınız" value={user.surname} onChange={(e)=>setUser({...user, surname: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition" required />
-            <input type="text" placeholder="Sektörünüz (Örn: Mobilya, Ajans)" value={user.sector} onChange={(e)=>setUser({...user, sector: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition" required />
+            <input type="text" placeholder="Sektörünüz (Örn: Boya, Ajans, Mobilya)" value={user.sector} onChange={(e)=>setUser({...user, sector: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition" required />
             <input type="email" placeholder="E-posta Adresiniz" value={user.email} onChange={(e)=>setUser({...user, email: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none transition" required />
             <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-4 rounded-xl shadow-lg transition transform hover:-translate-y-1 uppercase tracking-widest">Teste Başla</button>
           </form>
@@ -247,7 +253,7 @@ function App() {
                 ))}
               </div>
             ))}
-            <button onClick={handleSubmitQuiz} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-xl shadow-lg transition uppercase tracking-widest">Analizi Tamamla</button>
+            <button onClick={handleSubmitQuiz} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-xl shadow-lg transition uppercase tracking-widest">Analizi Bitir</button>
           </div>
         )}
 
@@ -257,13 +263,11 @@ function App() {
               <h2 className="text-xs opacity-70 uppercase tracking-[0.3em] font-black mb-2">Dijital Sağlık Skoru</h2>
               <div className="text-6xl font-black">{overallScore} <span className="text-2xl opacity-40">/ {overallMaxScore}</span></div>
             </div>
-            <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100 italic font-bold text-orange-900 text-sm italic">
-              "{shortAdvice || 'Analiz ediliyor...'}"
-            </div>
+            <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100 font-bold text-orange-900 text-sm">"{shortAdvice || 'Analiz ediliyor...'}"</div>
             <div className="text-left bg-slate-50 p-6 rounded-3xl border border-slate-100 shadow-sm">
               <h3 className="text-xl font-black text-slate-900 mb-4 flex items-center gap-2 underline decoration-orange-500 uppercase tracking-tighter italic">📍 Stratejik Ön Analiz</h3>
               {reportLoading ? (
-                <div className="flex flex-col items-center py-10 opacity-50 text-sm font-bold animate-pulse italic text-orange-600 text-center w-full uppercase">Yapay Zeka firmanızı analiz ediyor...</div>
+                <div className="flex flex-col items-center py-10 opacity-50 text-sm font-bold animate-pulse italic text-orange-600 text-center w-full uppercase text-[10px]">Yapay Zeka analiz ediyor...</div>
               ) : (
                 <div className="prose prose-orange max-w-none text-slate-700 leading-relaxed text-sm md:text-base"><ReactMarkdown>{reportData || 'Rapor hazırlanırken hata oluştu.'}</ReactMarkdown></div>
               )}
@@ -271,8 +275,8 @@ function App() {
             <div className="bg-emerald-50 p-3 rounded-xl text-emerald-800 font-black text-[10px] border border-emerald-200 uppercase tracking-widest italic">{emailStatus}</div>
             <div className="bg-orange-500 p-8 rounded-3xl shadow-2xl border-4 border-white text-white">
               <h4 className="font-black text-2xl mb-2 uppercase italic text-center">BİREBİR BÜYÜME ANALİZİ 📈</h4>
-              <p className="text-orange-50 font-medium mb-6 text-sm text-center">Bu verileri firmanızın gerçek büyüme motoruna dönüştürmek için randevunuzu hemen oluşturun.</p>
-              <a href="https://wa.me/905379484868?text=Merhaba, Sağlık Testimi tamamladım. Rapor verilerime göre birebir strateji analizi randevusu almak istiyorum." target="_blank" rel="noreferrer" className="flex items-center justify-center gap-3 bg-white text-orange-600 font-black py-4 px-6 rounded-2xl shadow-xl hover:bg-slate-100 transition transform hover:scale-105 uppercase tracking-widest text-sm">STRATEJİ RANDEVUSU AL</a>
+              <p className="text-orange-50 font-medium mb-6 text-sm text-center">Bu verileri gerçek bir satış motoruna dönüştürmek için ücretsiz strateji randevunuzu hemen oluşturun.</p>
+              <a href="https://wa.me/905379484868?text=Merhaba, Analizimi tamamladım. Birebir büyüme strateji randevusu almak istiyorum." target="_blank" rel="noreferrer" className="flex items-center justify-center gap-3 bg-white text-orange-600 font-black py-4 px-6 rounded-2xl shadow-xl hover:bg-slate-100 transition transform hover:scale-105 uppercase tracking-widest text-sm">STRATEJİ RANDEVUSU AL</a>
               <p className="mt-4 font-black text-sm text-center">📞 +90 537 948 48 68</p>
             </div>
             <button onClick={resetApp} className="text-slate-400 font-bold hover:text-slate-600 transition underline text-xs decoration-orange-300">Yeni Test Başlat</button>
