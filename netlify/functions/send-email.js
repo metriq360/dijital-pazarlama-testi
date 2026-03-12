@@ -4,7 +4,7 @@ export const handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
 
   try {
-    const { userInfo, scores } = JSON.parse(event.body);
+    const { userInfo, report, scores } = JSON.parse(event.body);
 
     const transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST,
@@ -19,19 +19,23 @@ export const handler = async (event) => {
     const mailToAdmin = {
       from: `"Metriq360 Funnel" <${process.env.EMAIL_USER}>`,
       to: process.env.ADMIN_EMAIL,
-      subject: `🔥 YENİ LEAD: ${userInfo.name} ${userInfo.surname}`,
+      subject: `🔥 SICAK LEAD: ${userInfo.name} ${userInfo.surname} (${userInfo.sector})`,
       html: `
-        <div style="font-family: sans-serif; color: #333; max-width: 600px;">
-            <h1 style="color: #f97316;">Yeni Bir Lead Yakalandı!</h1>
+        <div style="font-family: sans-serif; color: #333;">
+            <h1 style="color: #f97316;">WhatsApp Hunisinden Yeni Kayıt!</h1>
             <div style="background: #f9f9f9; padding: 20px; border-radius: 15px; border: 1px solid #eee;">
                 <p><b>Ad Soyad:</b> ${userInfo.name} ${userInfo.surname}</p>
                 <p><b>Sektör:</b> ${userInfo.sector}</p>
                 <p><b>E-posta:</b> ${userInfo.email}</p>
-                <p style="font-size: 20px; color: #f97316; background: #fff; padding: 10px; border-radius: 10px;"><b>WhatsApp: ${userInfo.whatsapp}</b></p>
+                <p style="font-size: 24px; color: #f97316;"><b>WhatsApp: ${userInfo.whatsapp}</b></p>
                 <hr>
-                <p><b>Arka Plan Skoru:</b> %${scores.totalScore}</p>
+                <p><b>Normalleştirilmiş Skor:</b> %${scores.totalScore}</p>
             </div>
-            <p>Müşteri teşekkür sayfasına yönlendirildi. Fikret Kara'nın manuel incelemesi için veriler hazır.</p>
+            <h2>AI Strateji Ön Raporu:</h2>
+            <div style="background: #fff7ed; padding: 20px; border-radius: 10px; border: 1px solid #ffedd5;">
+                ${report ? report.replace(/\n/g, '<br>') : 'Rapor hazırlanırken hata oluştu.'}
+            </div>
+            <p>Müşteri şu an teşekkür sayfasına yönlendirildi. Hemen iletişime geçebilirsiniz.</p>
         </div>
       `,
     };
@@ -40,6 +44,7 @@ export const handler = async (event) => {
 
     return { statusCode: 200, body: JSON.stringify({ message: 'Success' }) };
   } catch (error) {
+    console.error("Email error:", error);
     return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
   }
 };
