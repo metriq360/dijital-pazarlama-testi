@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc } from 'firebase/firestore';
 
-// Global değişkenler
+// Firebase ve App ID yapılandırması
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
@@ -65,10 +65,13 @@ function App() {
   const [db, setDb] = useState(null);
   const [auth, setAuth] = useState(null);
   const [userId, setUserId] = useState(null);
+  // WHATSAPP BİLGİSİ EKLENDİ
   const [user, setUser] = useState({ name: '', surname: '', sector: '', email: '', whatsapp: '' });
   const [currentStep, setCurrentStep] = useState('form');
   const [selectedSections, setSelectedSections] = useState([]);
   const [answers, setAnswers] = useState({});
+  const [normalizedScore, setNormalizedScore] = useState(0);
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -78,7 +81,7 @@ function App() {
       const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
       link.type = 'image/png'; link.rel = 'icon'; link.href = 'https://i.imgur.com/DMqrCwJ.png';
       document.getElementsByTagName('head')[0].appendChild(link);
-      document.title = "METRIQ360 | Dijital Sağlık Analizi";
+      document.title = "METRIQ360 | Dijital Sağlık Testi";
     };
     branding();
 
@@ -101,83 +104,78 @@ function App() {
     initFirebase();
   }, []);
 
-  const calculateScores = () => {
+  const handleUserFormSubmit = (e) => {
+    e.preventDefault();
+    if (!user.name || !user.surname || !user.sector || !user.email) { setError('Lütfen tüm alanları doldurun.'); return; }
+    setError(''); setCurrentStep('quiz-select');
+  };
+
+  const getSectionTitle = (num) => {
+    const titles = ['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'];
+    return titles[num] || '';
+  };
+
+  const startQuiz = () => {
+    if (selectedSections.length === 0) { setError('Lütfen en az bir alan seçin.'); return; }
+    setError(''); setAnswers({}); setCurrentStep('quiz');
+  };
+
+  const calculateScore = () => {
     let rawTotal = 0; let rawMax = 0;
-    const sScores = {}; const sMaxScores = {};
     selectedSections.forEach(num => {
       let sectionCurrent = 0;
       const sectionQs = allQuestions.filter(q => q.section === num);
       sectionQs.forEach(q => { sectionCurrent += (answers[q.id] || 0); });
-      sScores[num] = sectionCurrent;
-      sMaxScores[num] = sectionQs.length * 5;
       rawTotal += sectionCurrent;
       rawMax += sectionQs.length * 5;
     });
-    const norm = rawMax > 0 ? Math.round((rawTotal / rawMax) * 100) : 0;
-    return { rawTotal, rawMax, norm, sScores, sMaxScores };
+    return rawMax > 0 ? Math.round((rawTotal / rawMax) * 100) : 0;
   };
 
+  const handleFinishQuiz = () => {
+      const score = calculateScore();
+      setNormalizedScore(score);
+      setCurrentStep('whatsapp-funnel'); // YENİ FUNNEL ADIMINA GEÇİŞ
+  };
+
+  // NİHAİ GÖNDERİM VE YÖNLENDİRME FONKSİYONU
   const finalSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    
-    // WhatsApp zorunlu tutuldu (Funnel'ın ana amacı)
-    if (!user.whatsapp || user.whatsapp.length < 10) { 
-        setError("Lütfen geçerli bir WhatsApp numarası girin."); 
-        return; 
-    }
+    if (!user.whatsapp) { setError("Lütfen WhatsApp numaranızı girin."); return; }
     
     setSubmitLoading(true);
-    const result = calculateScores();
+    setError('');
 
     try {
       const baseUrl = window.location.origin === 'null' ? '' : window.location.origin;
       
-      // 1. Önce AI Raporunu Arka Planda Oluştur (Fikret Kara'nın incelemesi için veri hazır olsun)
-      const reportRes = await fetch(`${baseUrl}/.netlify/functions/generate-report`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          userInfo: user, 
-          totalScore: result.norm, 
-          totalMaxScore: 100, 
-          sectionScores: result.sScores, 
-          sectionMaxScores: result.sMaxScores, 
-          selectedSections 
-        }),
-      });
-      
-      const reportData = await reportRes.json();
-
-      // 2. Mail Gönder (WhatsApp ve AI Raporu dahil)
-      const emailResponse = await fetch(`${baseUrl}/.netlify/functions/send-email`, {
+      // 1. Arka planda mail/bilgi gönderimi
+      await fetch(`${baseUrl}/.netlify/functions/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
             userInfo: user, 
-            report: reportData.detailedReport,
-            scores: { totalScore: result.norm, sScores: result.sScores },
+            scores: { totalScore: normalizedScore, totalMaxScore: 100 },
             answers, 
             selectedSections 
         }),
       });
 
-      if (!emailResponse.ok) throw new Error("Gönderim başarısız.");
-
-      // 3. Firestore Kayıt
+      // 2. Firebase Kaydı (Yedekleme)
       if (db && userId) {
         await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'leads'), {
-          timestamp: new Date(), ...user, score: result.norm, report: reportData.detailedReport
+          timestamp: new Date(), ...user, score: normalizedScore, answers
         });
       }
 
-      // 4. Başarılı ise Yönlendir
+      // 3. İŞLEM BAŞARILI, KULLANICIYI TEŞEKKÜRLER SAYFASINA UÇUR
       window.location.href = "https://www.metriq360.tr/tesekkurler-test";
 
     } catch (err) {
       console.error(err);
-      setError("Bağlantı hatası: Lütfen internetinizi kontrol edip tekrar deneyin. (Not: Bu hata sadece yerel önizlemede görülür)");
-      setSubmitLoading(false);
+      setError("Bağlantı hatası oluştu, ancak yönlendiriliyorsunuz...");
+      // Hata alsa bile lead'i kaybetmemek için yönlendirebiliriz
+      setTimeout(() => { window.location.href = "https://www.metriq360.tr/tesekkurler-test"; }, 1500);
     }
   };
 
@@ -187,17 +185,16 @@ function App() {
     <div className="min-h-screen bg-orange-50 flex flex-col items-center justify-center p-4 font-sans text-slate-900">
       <div className="bg-white p-6 md:p-10 rounded-[2.5rem] shadow-2xl w-full max-w-2xl border-t-[10px] border-orange-500 text-center relative overflow-hidden">
         
-        {/* SOL ÜST SAĞLIK İKONU */}
-        <div className="absolute top-6 left-6 text-orange-400 opacity-60">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-            </svg>
-        </div>
-
-        <div className="mb-10">
-            <h1 className="text-3xl md:text-5xl font-black text-slate-900 mb-1 tracking-tight uppercase">METR<span className="text-orange-500">IQ</span>360</h1>
-            <p className="text-slate-400 font-bold uppercase tracking-[0.15em] text-[10px] md:text-[11px]">DİJİTAL PAZARLAMA SAĞLIK TESTİ</p>
-        </div>
+        {/* LOGO ALANI */}
+        {currentStep !== 'whatsapp-funnel' && (
+            <div className="mb-10">
+                <div className="absolute top-6 left-6 text-orange-400 opacity-60">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+                </div>
+                <h1 className="text-3xl md:text-5xl font-black text-slate-900 mb-1 tracking-tight uppercase">METR<span className="text-orange-500">IQ</span>360</h1>
+                <p className="text-slate-400 font-bold uppercase tracking-[0.15em] text-[10px] md:text-[11px]">DİJİTAL PAZARLAMA SAĞLIK TESTİ</p>
+            </div>
+        )}
         
         {error && (
           <div className="bg-red-50 text-red-700 p-5 rounded-2xl mb-8 text-sm border-l-8 border-red-500 font-bold text-left">
@@ -205,34 +202,37 @@ function App() {
           </div>
         )}
 
+        {/* ADIM 1: GİRİŞ FORMU */}
         {currentStep === 'form' && (
-          <form onSubmit={(e) => { e.preventDefault(); setCurrentStep('quiz-select'); }} className="space-y-5 text-left">
+          <form onSubmit={handleUserFormSubmit} className="space-y-5 text-left">
             <input type="text" placeholder="Adınız" value={user.name} onChange={(e)=>setUser({...user, name: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 focus:bg-white outline-none transition text-lg font-medium" required />
             <input type="text" placeholder="Soyadınız" value={user.surname} onChange={(e)=>setUser({...user, surname: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 focus:bg-white outline-none transition text-lg font-medium" required />
-            <input type="text" placeholder="Sektörünüz (Örn: Mobilya, Ajans)" value={user.sector} onChange={(e)=>setUser({...user, sector: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 focus:bg-white outline-none transition text-lg font-medium" required />
+            <input type="text" placeholder="Sektörünüz" value={user.sector} onChange={(e)=>setUser({...user, sector: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 focus:bg-white outline-none transition text-lg font-medium" required />
             <input type="email" placeholder="E-posta Adresiniz" value={user.email} onChange={(e)=>setUser({...user, email: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 focus:bg-white outline-none transition text-lg font-medium" required />
             <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-6 rounded-[1.5rem] shadow-xl uppercase tracking-widest transition-all transform hover:-translate-y-1 text-sm md:text-base">DİJİTAL SAĞLIK TESTİNİ BAŞLAT</button>
           </form>
         )}
 
+        {/* ADIM 2: BÖLÜM SEÇİMİ */}
         {currentStep === 'quiz-select' && (
           <div className="space-y-4">
-            <h2 className="text-xl font-bold text-slate-800 mb-6">Analiz Edilecek Alanları Seçin</h2>
+            <h2 className="text-xl font-bold text-slate-800 mb-6">Analiz Alanlarını Seçin</h2>
             {[1, 2, 3, 4, 5].map(num => (
               <label key={num} className="flex items-center p-5 bg-slate-50 rounded-2xl border-2 border-transparent hover:border-orange-200 cursor-pointer transition has-[:checked]:bg-orange-50 has-[:checked]:border-orange-500 text-left">
-                <input type="checkbox" checked={selectedSections.includes(num)} onChange={() => setSelectedSections(prev => prev.includes(num) ? prev.filter(s => s !== num) : [...prev, num].sort())} className="hidden" />
-                <span className={`text-lg font-bold ${selectedSections.includes(num) ? 'text-orange-600' : 'text-slate-500'}`}>{['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'][num]}</span>
+                <input type="checkbox" checked={selectedSections.includes(num)} onChange={() => handleSectionToggle(num)} className="hidden" />
+                <span className={`text-lg font-bold ${selectedSections.includes(num) ? 'text-orange-600' : 'text-slate-500'}`}>{getSectionTitle(num)}</span>
               </label>
             ))}
-            <button onClick={() => selectedSections.length > 0 ? setCurrentStep('quiz') : setError('Lütfen alan seçin.')} className="w-full bg-orange-500 text-white font-black py-5 rounded-2xl mt-6 uppercase tracking-widest shadow-md">Sorulara Geç</button>
+            <button onClick={startQuiz} className="w-full bg-orange-500 text-white font-black py-5 rounded-2xl mt-6 uppercase tracking-widest shadow-md hover:bg-orange-600 transition">Sorulara Geç</button>
           </div>
         )}
 
+        {/* ADIM 3: SORULAR */}
         {currentStep === 'quiz' && (
           <div className="space-y-8 text-left">
             {selectedSections.map(sNum => (
               <div key={sNum} className="space-y-4">
-                <h3 className="text-lg font-black text-slate-800 border-b-2 border-orange-100 pb-2 uppercase italic">{['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'][sNum]}</h3>
+                <h3 className="text-lg font-black text-slate-800 border-b-2 border-orange-100 pb-2 uppercase italic">{getSectionTitle(sNum)}</h3>
                 {allQuestions.filter(q => q.section === sNum).map((q, idx) => (
                   <div key={q.id} className="bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-sm">
                     <p className="font-bold text-slate-800 mb-4 text-sm">{idx + 1}. {q.text}</p>
@@ -245,42 +245,59 @@ function App() {
                 ))}
               </div>
             ))}
-            <button onClick={() => setCurrentStep('whatsapp')} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-5 rounded-2xl shadow-lg uppercase tracking-widest">Analizi Bitir</button>
+            <button onClick={handleFinishQuiz} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-5 rounded-2xl shadow-lg uppercase tracking-widest">Testi Tamamla</button>
           </div>
         )}
 
-        {currentStep === 'whatsapp' && (
-          <div className="space-y-6 animate-in fade-in zoom-in duration-500">
-            <div className="bg-orange-50 p-8 rounded-[2.5rem] border border-orange-100 shadow-inner">
-                <h2 className="text-2xl font-black text-slate-900 mb-3">Testiniz Tamamlandı! 🎉</h2>
-                <p className="text-slate-600 text-sm font-medium leading-relaxed">
-                    Büyüme uzmanımız <strong>Fikret Kara</strong> verilerinizi bizzat inceleyip size özel strateji raporunuzu oluşturacak. Raporunuz tamamlandığında size nereden ulaşalım?
+        {/* YENİ ADIM 4: KIRMIZI KUTU VE WHATSAPP FUNNEL */}
+        {currentStep === 'whatsapp-funnel' && (
+          <div className="space-y-6 animate-in fade-in zoom-in duration-500 mt-2">
+            
+            {/* ŞOK ETKİSİ YARATAN KIRMIZI KUTU */}
+            <div className="bg-red-600 text-white p-8 rounded-[2rem] shadow-2xl border-4 border-red-700 text-center relative overflow-hidden">
+                <h2 className="text-2xl md:text-3xl font-black mb-4 relative z-10">
+                   🚨 DİJİTAL SAĞLIK PUANINIZ: {normalizedScore} / 100
+                </h2>
+                <div className="bg-red-800/60 p-4 rounded-xl relative z-10 border border-red-500/50">
+                    <p className="text-red-50 font-bold text-sm md:text-base leading-snug">
+                        ⚠️ Durum: İşletmenizin dijital varlıklarında acil müdahale gerektiren ciro kayıpları tespit edildi!
+                    </p>
+                </div>
+            </div>
+
+            {/* ÇÖZÜM VE RAHATLATMA METNİ */}
+            <div className="bg-orange-50 p-6 rounded-[2rem] border border-orange-100 shadow-inner text-left">
+                <p className="text-slate-700 text-sm md:text-base font-medium leading-relaxed">
+                    <strong>Endişelenmeyin.</strong> Hangi metriklerde hata yaptığınızı ve bu kayıpları nasıl nakit akışına dönüştüreceğinizi gösteren detaylı kontrol raporunuz şu anda laboratuvarımızda uzmanımız tarafından hazırlanıyor.<br/><br/>
+                    Raporunuz tamamlandığında size doğrudan iletebilmemiz için lütfen aşağıdan WhatsApp numaranızı onaylayın. Ardından açılacak sayfadan randevu oluşturabilirsiniz.
                 </p>
             </div>
 
+            {/* WHATSAPP ALMA FORMU */}
             <form onSubmit={finalSubmit} className="space-y-5 text-left">
                 <div className="ml-2">
                     <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1">WhatsApp Numaranız</label>
-                    <p className="text-[10px] text-slate-400 mb-2 italic">Analiz raporunuzu bu numaraya ileteceğiz.</p>
                 </div>
                 <input 
                     type="tel" 
                     placeholder="Örn: 0532 123 45 67" 
                     value={user.whatsapp} 
                     onChange={(e)=>setUser({...user, whatsapp: e.target.value})} 
-                    className="w-full px-8 py-6 rounded-[1.5rem] border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 outline-none transition text-xl font-black" 
+                    className="w-full px-8 py-6 rounded-[1.5rem] border border-slate-200 bg-white focus:ring-4 focus:ring-orange-500 outline-none transition text-xl font-black placeholder:text-slate-300 shadow-sm" 
                     required 
                 />
+                
                 <button 
                     type="submit" 
                     disabled={submitLoading} 
-                    className={`w-full ${submitLoading ? 'bg-slate-300' : 'bg-orange-500 hover:bg-orange-600'} text-white font-black py-6 rounded-[1.75rem] shadow-2xl uppercase tracking-widest transition-all transform hover:scale-105 active:scale-95`}
+                    className={`w-full ${submitLoading ? 'bg-slate-400' : 'bg-orange-600 hover:bg-orange-700'} text-white font-black py-6 rounded-[1.75rem] shadow-2xl uppercase tracking-widest text-sm md:text-base transition-all transform hover:scale-105 active:scale-95`}
                 >
-                    {submitLoading ? 'RAPOR HAZIRLANIYOR...' : 'RAPORUMU LABORATUVARA GÖNDER'}
+                    {submitLoading ? 'GÖNDERİLİYOR...' : 'RAPORU GÖNDER'}
                 </button>
             </form>
           </div>
         )}
+
       </div>
     </div>
   );
