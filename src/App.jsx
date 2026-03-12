@@ -127,19 +127,23 @@ function App() {
 
   const calculateScore = () => {
     let rawTotal = 0; let rawMax = 0;
+    const sScores = {}; const sMaxScores = {};
     selectedSections.forEach(num => {
       let sectionCurrent = 0;
       const sectionQs = allQuestions.filter(q => q.section === num);
       sectionQs.forEach(q => { sectionCurrent += (answers[q.id] || 0); });
+      sScores[num] = sectionCurrent;
+      sMaxScores[num] = sectionQs.length * 5;
       rawTotal += sectionCurrent;
       rawMax += sectionQs.length * 5;
     });
-    return rawMax > 0 ? Math.round((rawTotal / rawMax) * 100) : 0;
+    const norm = rawMax > 0 ? Math.round((rawTotal / rawMax) * 100) : 0;
+    return { rawTotal, rawMax, norm, sScores, sMaxScores };
   };
 
   const handleFinishQuiz = () => {
-      const score = calculateScore();
-      setNormalizedScore(score);
+      const scoreData = calculateScore();
+      setNormalizedScore(scoreData.norm);
       setCurrentStep('whatsapp-funnel');
   };
 
@@ -150,29 +154,56 @@ function App() {
     setSubmitLoading(true);
     setError('');
 
+    // Skorları tekrar hesapla ki backend'e gönderebilelim
+    const result = calculateScore();
+
     try {
       const baseUrl = window.location.origin === 'null' ? '' : window.location.origin;
       
-      // 1. Arka planda mail gönderimi (SADECE SANA)
+      // 1. ÖNCE ARKA PLANDA AI RAPORUNU OLUŞTUR (Ekranda göstermiyoruz ama mailler için lazım)
+      let generatedReport = "Rapor hazırlanırken kısa süreli bir yoğunluk oluştu. Uzmanımız Fikret Kara size özel detaylı analizi bizzat iletecektir.";
+      try {
+        const reportRes = await fetch(`${baseUrl}/.netlify/functions/generate-report`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            userInfo: user, 
+            totalScore: result.norm, 
+            totalMaxScore: 100, 
+            sectionScores: result.sScores, 
+            sectionMaxScores: result.sMaxScores, 
+            selectedSections 
+          }),
+        });
+        if (reportRes.ok) {
+            const reportData = await reportRes.json();
+            generatedReport = reportData.detailedReport;
+        }
+      } catch(aiError) {
+          console.error("AI Hatası:", aiError);
+      }
+
+      // 2. HEM SANA HEM MÜŞTERİYE E-POSTA GÖNDER (Tüm detaylar, cevaplar ve raporla birlikte)
       await fetch(`${baseUrl}/.netlify/functions/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
             userInfo: user, 
-            scores: { totalScore: normalizedScore, totalMaxScore: 100 },
+            report: generatedReport, // Ürettiğimiz AI raporunu ekledik
+            scores: { totalScore: result.norm, totalMaxScore: 100, sectionScores: result.sScores, sectionMaxScores: result.sMaxScores },
             answers, 
             selectedSections 
         }),
       });
 
-      // 2. Firebase Kaydı (Yedekleme)
+      // 3. Firebase Kaydı (Yedekleme)
       if (db && userId) {
         await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'leads'), {
-          timestamp: new Date(), ...user, score: normalizedScore, answers
+          timestamp: new Date(), ...user, score: result.norm, answers, report: generatedReport
         });
       }
 
-      // 3. İŞLEM BAŞARILI, TEŞEKKÜRLER SAYFASINA UÇUR
+      // 4. İŞLEM BAŞARILI, TEŞEKKÜRLER SAYFASINA UÇUR
       window.location.href = "https://www.metriq360.tr/tesekkurler-test";
 
     } catch (err) {
@@ -216,7 +247,7 @@ function App() {
           </form>
         )}
 
-        {/* ADIM 2: BÖLÜM SEÇİMİ (BURASI KÖKTEN DÜZELTİLDİ) */}
+        {/* ADIM 2: BÖLÜM SEÇİMİ */}
         {currentStep === 'quiz-select' && (
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-slate-800 mb-6">Analiz Alanlarını Seçin</h2>
@@ -268,7 +299,7 @@ function App() {
           </div>
         )}
 
-        {/* ADIM 4: KIRMIZI KUTU VE WHATSAPP FUNNEL */}
+        {/* ADIM 4: KIRMIZI KUTU VE WHATSAPP FUNNEL (RAPOR EKRANI YOK) */}
         {currentStep === 'whatsapp-funnel' && (
           <div className="space-y-6 animate-in fade-in zoom-in duration-500 mt-2">
             
@@ -284,16 +315,29 @@ function App() {
                 </div>
             </div>
 
-            {/* ÇÖZÜM VE RAHATLATMA METNİ */}
-            <div className="bg-orange-50 p-6 rounded-[2rem] border border-orange-100 shadow-inner text-left">
-                <p className="text-slate-700 text-sm md:text-base font-medium leading-relaxed">
-                    <strong>Endişelenmeyin.</strong> Hangi metriklerde hata yaptığınızı ve bu kayıpları nasıl nakit akışına dönüştüreceğinizi gösteren detaylı kontrol raporunuz şu anda laboratuvarımızda uzmanımız tarafından hazırlanıyor.<br/><br/>
-                    Raporunuz tamamlandığında size doğrudan iletebilmemiz için lütfen aşağıdan WhatsApp numaranızı onaylayın. Ardından açılacak sayfadan randevu oluşturabilirsiniz.
-                </p>
+            {/* ÇÖZÜM VE NET BİLGİLENDİRME ALANI (BÜYÜK VE DİKKAT ÇEKİCİ) */}
+            <div className="bg-white p-6 md:p-8 rounded-[2rem] border-2 border-orange-200 shadow-xl text-left relative mt-6">
+                <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-6 border-b-2 border-orange-100 pb-3">Sırada Ne Var? Lütfen Dikkatlice Okuyun 👇</h3>
+                <ul className="space-y-6">
+                    <li className="flex items-start gap-4">
+                        <div className="bg-emerald-100 text-emerald-600 p-3 rounded-2xl text-2xl shadow-sm">📧</div>
+                        <div>
+                            <strong className="text-slate-900 text-lg block mb-1">1. Ön Analiziniz E-postanıza Gönderiliyor</strong>
+                            <p className="text-slate-600 text-sm md:text-base font-medium leading-relaxed">Yapay zeka tarafından hazırlanan ilk durum tespit raporunuz ve detaylı skor dökümünüz onayınızla birlikte <strong className="text-orange-600">{user.email}</strong> adresine otomatik iletilecektir.</p>
+                        </div>
+                    </li>
+                    <li className="flex items-start gap-4">
+                        <div className="bg-orange-100 text-orange-600 p-3 rounded-2xl text-2xl shadow-sm">📲</div>
+                        <div>
+                            <strong className="text-slate-900 text-lg block mb-1">2. Uzmanımız Detaylı Rapor İçin Ulaşacak</strong>
+                            <p className="text-slate-600 text-sm md:text-base font-medium leading-relaxed">Büyüme uzmanımız <strong>Fikret Kara</strong>, verdiğiniz tüm cevapları bizzat inceleyip ciro kayıplarınızı nasıl durduracağınızı gösteren <strong>size özel detaylı bir yol haritası</strong> hazırlayacak. Bu özel raporu size direkt iletebilmemiz için lütfen aşağıdan numaranızı onaylayın.</p>
+                        </div>
+                    </li>
+                </ul>
             </div>
 
             {/* WHATSAPP ALMA FORMU */}
-            <form onSubmit={finalSubmit} className="space-y-5 text-left">
+            <form onSubmit={finalSubmit} className="space-y-5 text-left mt-8">
                 <div className="ml-2">
                     <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1">WhatsApp Numaranız</label>
                 </div>
@@ -311,7 +355,7 @@ function App() {
                     disabled={submitLoading} 
                     className={`w-full ${submitLoading ? 'bg-slate-400' : 'bg-orange-600 hover:bg-orange-700'} text-white font-black py-6 rounded-[1.75rem] shadow-2xl uppercase tracking-widest text-sm md:text-base transition-all transform hover:scale-105 active:scale-95`}
                 >
-                    {submitLoading ? 'GÖNDERİLİYOR...' : 'RAPORU GÖNDER'}
+                    {submitLoading ? 'RAPORLAR GÖNDERİLİYOR...' : 'SONUÇLARI VE RAPORU GÖNDER'}
                 </button>
             </form>
           </div>
