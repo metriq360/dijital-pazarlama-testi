@@ -65,7 +65,6 @@ function App() {
   const [db, setDb] = useState(null);
   const [auth, setAuth] = useState(null);
   const [userId, setUserId] = useState(null);
-  // WHATSAPP BİLGİSİ EKLENDİ
   const [user, setUser] = useState({ name: '', surname: '', sector: '', email: '', whatsapp: '' });
   const [currentStep, setCurrentStep] = useState('form');
   const [selectedSections, setSelectedSections] = useState([]);
@@ -115,6 +114,12 @@ function App() {
     return titles[num] || '';
   };
 
+  const handleSectionToggle = (num) => {
+    setSelectedSections(prev =>
+      prev.includes(num) ? prev.filter(s => s !== num) : [...prev, num].sort()
+    );
+  };
+
   const startQuiz = () => {
     if (selectedSections.length === 0) { setError('Lütfen en az bir alan seçin.'); return; }
     setError(''); setAnswers({}); setCurrentStep('quiz');
@@ -135,10 +140,9 @@ function App() {
   const handleFinishQuiz = () => {
       const score = calculateScore();
       setNormalizedScore(score);
-      setCurrentStep('whatsapp-funnel'); // YENİ FUNNEL ADIMINA GEÇİŞ
+      setCurrentStep('whatsapp-funnel');
   };
 
-  // NİHAİ GÖNDERİM VE YÖNLENDİRME FONKSİYONU
   const finalSubmit = async (e) => {
     e.preventDefault();
     if (!user.whatsapp) { setError("Lütfen WhatsApp numaranızı girin."); return; }
@@ -149,7 +153,7 @@ function App() {
     try {
       const baseUrl = window.location.origin === 'null' ? '' : window.location.origin;
       
-      // 1. Arka planda mail/bilgi gönderimi
+      // 1. Arka planda mail gönderimi (SADECE SANA)
       await fetch(`${baseUrl}/.netlify/functions/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -168,13 +172,12 @@ function App() {
         });
       }
 
-      // 3. İŞLEM BAŞARILI, KULLANICIYI TEŞEKKÜRLER SAYFASINA UÇUR
+      // 3. İŞLEM BAŞARILI, TEŞEKKÜRLER SAYFASINA UÇUR
       window.location.href = "https://www.metriq360.tr/tesekkurler-test";
 
     } catch (err) {
       console.error(err);
       setError("Bağlantı hatası oluştu, ancak yönlendiriliyorsunuz...");
-      // Hata alsa bile lead'i kaybetmemek için yönlendirebiliriz
       setTimeout(() => { window.location.href = "https://www.metriq360.tr/tesekkurler-test"; }, 1500);
     }
   };
@@ -213,14 +216,24 @@ function App() {
           </form>
         )}
 
-        {/* ADIM 2: BÖLÜM SEÇİMİ */}
+        {/* ADIM 2: BÖLÜM SEÇİMİ (BURASI KÖKTEN DÜZELTİLDİ) */}
         {currentStep === 'quiz-select' && (
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-slate-800 mb-6">Analiz Alanlarını Seçin</h2>
             {[1, 2, 3, 4, 5].map(num => (
-              <label key={num} className="flex items-center p-5 bg-slate-50 rounded-2xl border-2 border-transparent hover:border-orange-200 cursor-pointer transition has-[:checked]:bg-orange-50 has-[:checked]:border-orange-500 text-left">
-                <input type="checkbox" checked={selectedSections.includes(num)} onChange={() => handleSectionToggle(num)} className="hidden" />
-                <span className={`text-lg font-bold ${selectedSections.includes(num) ? 'text-orange-600' : 'text-slate-500'}`}>{getSectionTitle(num)}</span>
+              <label 
+                key={num} 
+                className={`flex items-center p-5 rounded-2xl border-2 cursor-pointer transition text-left ${selectedSections.includes(num) ? 'bg-orange-50 border-orange-500' : 'bg-slate-50 border-transparent hover:border-orange-200'}`}
+              >
+                <input 
+                  type="checkbox" 
+                  checked={selectedSections.includes(num)} 
+                  onChange={() => handleSectionToggle(num)} 
+                  className="hidden" 
+                />
+                <span className={`text-lg font-bold ${selectedSections.includes(num) ? 'text-orange-600' : 'text-slate-500'}`}>
+                  {getSectionTitle(num)}
+                </span>
               </label>
             ))}
             <button onClick={startQuiz} className="w-full bg-orange-500 text-white font-black py-5 rounded-2xl mt-6 uppercase tracking-widest shadow-md hover:bg-orange-600 transition">Sorulara Geç</button>
@@ -238,7 +251,13 @@ function App() {
                     <p className="font-bold text-slate-800 mb-4 text-sm">{idx + 1}. {q.text}</p>
                     <div className="flex justify-between gap-1 md:gap-2 text-center">
                       {[1, 2, 3, 4, 5].map(v => (
-                        <button key={v} onClick={() => setAnswers(prev => ({...prev, [q.id]: v}))} className={`flex-1 py-4 rounded-xl font-black text-sm transition ${answers[q.id] === v ? 'bg-orange-500 text-white shadow-md scale-105' : 'bg-white text-slate-400 hover:bg-slate-100 border border-slate-200'}`}>{v}</button>
+                        <button 
+                          key={v} 
+                          onClick={() => setAnswers(prev => ({...prev, [q.id]: v}))} 
+                          className={`flex-1 py-4 rounded-xl font-black text-sm transition ${answers[q.id] === v ? 'bg-orange-500 text-white shadow-md scale-105' : 'bg-white text-slate-400 hover:bg-slate-100 border border-slate-200'}`}
+                        >
+                          {v}
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -249,7 +268,7 @@ function App() {
           </div>
         )}
 
-        {/* YENİ ADIM 4: KIRMIZI KUTU VE WHATSAPP FUNNEL */}
+        {/* ADIM 4: KIRMIZI KUTU VE WHATSAPP FUNNEL */}
         {currentStep === 'whatsapp-funnel' && (
           <div className="space-y-6 animate-in fade-in zoom-in duration-500 mt-2">
             
