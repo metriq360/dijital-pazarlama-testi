@@ -4,7 +4,7 @@ export const handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
 
   try {
-    const { userInfo, report, scores } = JSON.parse(event.body);
+    const { userInfo, scores, answers } = JSON.parse(event.body);
 
     const transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST,
@@ -16,26 +16,25 @@ export const handler = async (event) => {
       },
     });
 
+    // SADECE SANA GELEN MAİL (Müşteriye artık sonuç/rapor gitmiyor, numarayı aldık randevuya yönlendirdik)
     const mailToAdmin = {
       from: `"Metriq360 Funnel" <${process.env.EMAIL_USER}>`,
       to: process.env.ADMIN_EMAIL,
-      subject: `🔥 SICAK LEAD: ${userInfo.name} ${userInfo.surname} (${userInfo.sector})`,
+      subject: `🚨 YENİ SAĞLIK TESTİ LEAD'İ: ${userInfo.name} ${userInfo.surname}`,
       html: `
-        <div style="font-family: sans-serif; color: #333;">
-            <h1 style="color: #f97316;">WhatsApp Hunisinden Yeni Kayıt!</h1>
+        <div style="font-family: sans-serif; color: #333; max-width: 600px;">
+            <h1 style="color: #d32f2f;">Yeni Lead Yakalandı!</h1>
             <div style="background: #f9f9f9; padding: 20px; border-radius: 15px; border: 1px solid #eee;">
                 <p><b>Ad Soyad:</b> ${userInfo.name} ${userInfo.surname}</p>
                 <p><b>Sektör:</b> ${userInfo.sector}</p>
                 <p><b>E-posta:</b> ${userInfo.email}</p>
-                <p style="font-size: 24px; color: #f97316;"><b>WhatsApp: ${userInfo.whatsapp}</b></p>
-                <hr>
-                <p><b>Normalleştirilmiş Skor:</b> %${scores.totalScore}</p>
+                <div style="background: #e3f2fd; padding: 15px; border-radius: 10px; margin-top: 15px;">
+                    <p style="font-size: 24px; color: #0277bd; margin: 0;"><b>📞 WhatsApp: ${userInfo.whatsapp}</b></p>
+                </div>
+                <hr style="margin: 20px 0;">
+                <p style="font-size: 18px;"><b>Hesaplanan Skor:</b> <span style="color: #d32f2f;">%${scores.totalScore}</span></p>
             </div>
-            <h2>AI Strateji Ön Raporu:</h2>
-            <div style="background: #fff7ed; padding: 20px; border-radius: 10px; border: 1px solid #ffedd5;">
-                ${report ? report.replace(/\n/g, '<br>') : 'Rapor hazırlanırken hata oluştu.'}
-            </div>
-            <p>Müşteri şu an teşekkür sayfasına yönlendirildi. Hemen iletişime geçebilirsiniz.</p>
+            <p style="color: #555;"><i>Not: Müşteri şu anda başarıyla teşekkür sayfasına (tesekkurler-test) yönlendirildi. Arayıp satışı kapatabilirsiniz.</i></p>
         </div>
       `,
     };
@@ -44,7 +43,7 @@ export const handler = async (event) => {
 
     return { statusCode: 200, body: JSON.stringify({ message: 'Success' }) };
   } catch (error) {
-    console.error("Email error:", error);
+    console.error("Email Error:", error);
     return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
   }
 };
