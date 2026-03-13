@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 
-// Tüm Sorular (Admin mailinde cevapları listeleyebilmek için)
+// Admin maili için soruların tam metni
 const allQuestions = [
   { id: 'q1_1', section: 1, text: 'Sosyal medya paylaşım sıklığı' },
   { id: 'q1_2', section: 1, text: 'Platform bazlı strateji' },
@@ -31,7 +31,7 @@ const allQuestions = [
   { id: 'q3_7', section: 3, text: 'Bütçe optimizasyonu' },
   { id: 'q3_8', section: 3, text: 'Reklam format çeşitliliği' },
   { id: 'q3_9', section: 3, text: 'Dönüşüm takibi (Pixel/GA)' },
-  { id: 'q3_10', section: 3, text: 'Haftalık raporlama' },
+  { id: 'q3_10', section: 3, text: 'Reklam performans raporlama' },
   { id: 'q4_1', section: 4, text: 'Blog içerik yayını' },
   { id: 'q4_2', section: 4, text: 'İçerik stratejisi' },
   { id: 'q4_3', section: 4, text: 'Sorun çözme odaklılık' },
@@ -59,9 +59,9 @@ const getSectionTitle = (num) => {
     return titles[num] || '';
 };
 
-// Markdown Temizleyici (Premium HTML Tasarımı İçin)
+// Markdown Temizleyici
 const cleanMarkdownForEmail = (text) => {
-    if (!text) return "Rapor hazırlanıyor...";
+    if (!text) return "Analiz hazırlanıyor...";
     return text
         .replace(/^\s*###\s+(.*)/gm, '<h3 style="color:#ea580c; font-size:18px; margin:25px 0 10px 0; border-bottom:2px solid #fdba74; padding-bottom:6px; font-weight:800;">$1</h3>')
         .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#0f172a; font-weight:800;">$1</strong>')
@@ -84,7 +84,7 @@ export const handler = async (event) => {
 
     const cleanReport = cleanMarkdownForEmail(report);
 
-    // --- ADMİNE (SANA) GİDEN DETAYLI VERİ LİSTESİ ---
+    // --- 1. ADMİNE (SANA) GİDEN DETAYLI MAİL (GERİ GETİRİLDİ!) ---
     let detailsHTML = `<h2 style="color:#d32f2f; border-bottom: 2px solid #eee; padding-bottom: 10px;">📊 Müşterinin Test Cevapları:</h2>`;
     if (selectedSections && answers) {
         selectedSections.forEach(sNum => {
@@ -93,7 +93,7 @@ export const handler = async (event) => {
             </div><ul style="list-style:none; padding-left:0;">`;
             
             allQuestions.filter(q => q.section === sNum).forEach(q => {
-                const val = answers[q.id] || 'Yanıtlanmadı';
+                const val = answers[q.id] || 'Boş';
                 detailsHTML += `<li style="margin-bottom:8px; border-left:4px solid #f1f5f9; padding-left:10px; font-size:13px;">
                     <span style="color:#64748b;">${q.text}</span><br>
                     <b style="color:#1e293b;">Puan: ${val} / 5</b>
@@ -103,36 +103,27 @@ export const handler = async (event) => {
         });
     }
 
-    // 1. SANA (ADMİNE) GELEN MAİL (HER ŞEY DAHİL!)
     const mailToAdmin = {
       from: `"Lead Alert" <${process.env.EMAIL_USER}>`,
       to: process.env.ADMIN_EMAIL,
-      subject: `🔥 YENİ LEAD: ${userInfo.name} (${userInfo.whatsapp})`,
+      subject: `🚨 YENİ LEAD: ${userInfo.name} (${userInfo.whatsapp})`,
       html: `
         <div style="font-family: sans-serif; color: #333; max-width: 650px;">
-            <h1 style="color:#d32f2f;">Yeni Lead Yakalandı!</h1>
+            <h1 style="color:#d32f2f;">Yeni Kayıt Yakalandı!</h1>
             <div style="background:#f1f5f9; padding:20px; border-radius:15px; border:1px solid #e2e8f0;">
                 <p><b>İsim Soyisim:</b> ${userInfo.name} ${userInfo.surname}</p>
                 <p><b>Sektör:</b> ${userInfo.sector}</p>
                 <p style="font-size: 20px; color: #0284c7;"><b>📞 WhatsApp: ${userInfo.whatsapp}</b></p>
                 <p><b>E-posta:</b> ${userInfo.email}</p>
-                <hr>
-                <p style="font-size: 18px;"><b>Genel Skor:</b> %${scores?.totalScore || 0}</p>
+                <hr><p style="font-size: 18px;"><b>Genel Skor:</b> %${scores?.totalScore || 0}</p>
             </div>
-            
-            <div style="margin-top: 30px;">
-                ${detailsHTML}
-            </div>
-
-            <h2 style="margin-top: 30px; color:#d32f2f;">Yapay Zeka Ön Raporu:</h2>
-            <div style="background:#fff7ed; padding:20px; border-radius:12px; border:1px solid #ffedd5; line-height:1.6;">
-                ${cleanReport}
-            </div>
-        </div>
-      `
+            <div style="margin-top: 30px;">${detailsHTML}</div>
+            <h2 style="margin-top: 30px; color:#d32f2f;">Yapay Zeka Analizi:</h2>
+            <div style="background:#fff7ed; padding:20px; border-radius:12px; border:1px solid #ffedd5;">${cleanReport}</div>
+        </div>`
     };
 
-    // 2. MÜŞTERİYE GİDEN PREMIUM, FERAH VE CTA'LI MAİL
+    // --- 2. MÜŞTERİYE GİDEN PREMIUM VE CTA'LI MAİL (MÜHÜRLENDİ!) ---
     const mailToUser = {
         from: `"Metriq360 Strateji" <${process.env.EMAIL_USER}>`,
         to: userInfo.email,
@@ -154,7 +145,6 @@ export const handler = async (event) => {
                     <div style="background-color: #f8fafc; border: 2px solid #f1f5f9; border-radius: 16px; padding: 25px; margin: 30px 0; text-align: center;">
                         <span style="font-size: 13px; color: #64748b; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">GENEL SAĞLIK PUANINIZ</span>
                         <div style="font-size: 56px; font-weight: 900; color: #ea580c; margin: 5px 0;">${scores?.totalScore || 0} / 100</div>
-                        
                         <div style="text-align: left; margin-top: 20px; font-size: 14px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
                             ${(selectedSections || []).map(sNum => `
                                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px dashed #f1f5f9; padding-bottom: 5px;">
@@ -166,11 +156,9 @@ export const handler = async (event) => {
                     </div>
 
                     <!-- AI RAPOR İÇERİĞİ -->
-                    <div style="font-size: 16px; line-height: 1.8; color: #334155;">
-                        ${cleanReport}
-                    </div>
+                    <div style="font-size: 16px; line-height: 1.8; color: #334155;">${cleanReport}</div>
 
-                    <!-- CTA ALANI (BEĞENDİĞİN O TASARIM) -->
+                    <!-- CTA ALANI (BÜYÜK TURUNCU BUTON) -->
                     <div style="margin-top: 50px; padding: 35px; background-color: #ffffff; border: 3px solid #ea580c; border-radius: 20px; text-align: center;">
                         <h2 style="font-size: 24px; color: #0f172a; margin-top: 0; margin-bottom: 12px;">Raporunuzun Detayları Hazırlanıyor ⚙️</h2>
                         <p style="font-size: 15px; color: #64748b; line-height: 1.6; margin-bottom: 30px;">Yukarıdaki bulgular ilk tespitlerdir. Büyüme uzmanımız <strong>Fikret Kara</strong>, verdiğiniz tüm cevapları inceleyip size özel <strong>Nihai Büyüme Stratejinizi</strong> hazırlayacak ve <strong>WhatsApp</strong> üzerinden iletişime geçecektir.</p>
@@ -188,9 +176,9 @@ export const handler = async (event) => {
                     </div>
                 </div>
 
-                <!-- FOOTER (GÖRSELDEKİ LACİVERT ALAN) -->
+                <!-- LACİVERT FOOTER -->
                 <div style="background-color: #0f172a; color: #94a3b8; padding: 45px 20px; text-align: center; font-size: 14px;">
-                    <strong style="color: #fff; display: block; margin-bottom: 15px; font-size: 18px; letter-spacing: 1px;">METRIQ360 BÜYÜME EKİBİ</strong>
+                    <strong style="color: #fff; display: block; margin-bottom: 15px; font-size: 18px;">METRIQ360 BÜYÜME EKİBİ</strong>
                     <p style="margin: 5px 0;">📞 +90 537 948 48 68</p>
                     <p style="margin: 5px 0;">✉️ <a href="mailto:bilgi@metriq360.tr" style="color:#94a3b8; text-decoration:none;">bilgi@metriq360.tr</a></p>
                     <p style="margin: 5px 0;">🌐 <a href="https://www.metriq360.tr" style="color:#ea580c; text-decoration:none;">www.metriq360.tr</a></p>
