@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 
-// Tüm Sorular (Sana cevapları listelemek için)
+// Tüm Sorular (Admin mailinde cevapları listelemek için)
 const allQuestions = [
   { id: 'q1_1', section: 1, text: 'Sosyal medya hesaplarınızda ne sıklıkla paylaşım yapıyorsunuz?' },
   { id: 'q1_2', section: 1, text: 'Her platform için ayrı bir strateji uyguluyor musunuz?' },
@@ -54,7 +54,7 @@ const allQuestions = [
   { id: 'q5_10', section: 5, text: 'Dijital pazarlama süreçlerinin tümünü bir sistem dahilinde takip ediyor musunuz?' }
 ];
 
-// Markdown temizleyici (Şık Tasarım İçin)
+// Markdown Temizleyici (Şık Liste Tasarımı)
 const cleanMarkdownForEmail = (text) => {
     if (!text) return "Rapor hazırlanıyor...";
     return text
@@ -68,7 +68,7 @@ const cleanMarkdownForEmail = (text) => {
 };
 
 const getSectionTitle = (num) => {
-    const titles = ['', 'Sosyal Medya Yönetimi', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'];
+    const titles = ['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'];
     return titles[num] || '';
 };
 
@@ -87,7 +87,7 @@ export const handler = async (event) => {
 
     const cleanReport = cleanMarkdownForEmail(report);
 
-    // ADMİNE GİDEN CEVAP LİSTESİ
+    // ADMİNE GİDEN CEVAP LİSTESİ (Tablo formatında)
     let detailsHTML = `<h2 style="color:#d32f2f;">Müşterinin Test Cevapları:</h2>`;
     if (selectedSections && answers) {
         selectedSections.forEach(sNum => {
@@ -108,14 +108,14 @@ export const handler = async (event) => {
         });
     }
 
-    // 1. SANA (ADMİNE) GELEN MAİL
+    // --- 1. SANA (ADMİNE) GELEN MAİL ---
     const mailToAdmin = {
       from: `"Metriq360 Funnel" <${process.env.EMAIL_USER}>`,
       to: process.env.ADMIN_EMAIL,
       subject: `🚨 YENİ LEAD: ${userInfo.name} ${userInfo.surname} (${userInfo.sector})`,
       html: `
         <div style="font-family: sans-serif; color: #333; max-width: 600px;">
-            <h1 style="color: #d32f2f;">WhatsApp Hunisinden Yeni Kayıt!</h1>
+            <h1 style="color: #d32f2f;">Yeni Kayıt!</h1>
             <div style="background: #f9f9f9; padding: 20px; border-radius: 15px; border: 1px solid #eee;">
                 <p><b>Ad Soyad:</b> ${userInfo.name} ${userInfo.surname}</p>
                 <p><b>Sektör:</b> ${userInfo.sector}</p>
@@ -126,21 +126,14 @@ export const handler = async (event) => {
                 <hr style="margin: 20px 0;">
                 <p style="font-size: 18px;"><b>Genel Skor:</b> %${scores?.totalScore || 0}</p>
             </div>
-            
-            <div style="margin-top: 30px;">
-                ${detailsHTML}
-            </div>
-
-            <h2 style="margin-top: 30px; color: #d32f2f;">Yapay Zeka Ön Raporu:</h2>
-            <div style="background: #fff7ed; padding: 20px; border-radius: 10px; border: 1px solid #ffedd5;">
-                ${cleanReport}
-            </div>
-            <p style="color: #555; margin-top:20px;"><i>Not: Müşteri şu anda başarıyla teşekkür sayfasına yönlendirildi. Arayıp satışı kapatabilirsiniz.</i></p>
+            <div style="margin-top: 30px;">${detailsHTML}</div>
+            <h2 style="margin-top: 30px; color: #d32f2f;">AI Ön Raporu:</h2>
+            <div style="background: #fff7ed; padding: 20px; border-radius: 10px; border: 1px solid #ffedd5;">${cleanReport}</div>
         </div>
       `,
     };
 
-    // 2. MÜŞTERİYE GİDEN EKSİKSİZ, PREMIUM TASARIM (EKSİKLER GİDERİLDİ!)
+    // --- 2. MÜŞTERİYE GİDEN PREMIUM MAİL (GÖRSELDEKİ BİREBİR TASARIM) ---
     const mailToUser = {
         from: `"Metriq360 Strateji" <${process.env.EMAIL_USER}>`,
         to: userInfo.email,
@@ -148,25 +141,24 @@ export const handler = async (event) => {
         html: `
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 650px; margin: 0 auto; color: #1e293b; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
                 
-                <!-- HEADER -->
+                <!-- LOGO/HEADER -->
                 <div style="background-color: #f8fafc; padding: 30px 20px; text-align: center; border-bottom: 1px solid #e2e8f0;">
                     <h1 style="margin: 0; font-size: 32px; font-weight: 900; letter-spacing: -1px; color: #0f172a;">METR<span style="color: #ea580c;">IQ</span>360</h1>
                     <p style="margin: 8px 0 0 0; font-size: 12px; font-weight: 700; letter-spacing: 3px; color: #64748b; text-transform: uppercase;">Stratejik Büyüme Laboratuvarı</p>
                 </div>
                 
-                <!-- GİRİŞ BÖLÜMÜ -->
+                <!-- GİRİŞ -->
                 <div style="padding: 30px 30px 10px 30px;">
                     <h2 style="font-size: 20px; color: #0f172a; margin-top: 0;">Merhaba Sayın ${userInfo.name} ${userInfo.surname},</h2>
                     <p style="font-size: 15px; line-height: 1.6; color: #475569;">Dijital Pazarlama Sağlık Testi verileriniz yapay zeka altyapımız tarafından analiz edildi. Aşağıda <b>detaylı skor dökümünüzü</b> ve dijital varlıklarınızın genel röntgenini bulabilirsiniz.</p>
                 </div>
 
-                <!-- SKOR DÖKÜMÜ TABLOSU -->
+                <!-- SKOR TABLOSU -->
                 <div style="background-color: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 25px; margin: 0 30px 20px 30px; text-align: center;">
                     <h3 style="color: #64748b; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; margin-top: 0; margin-bottom: 10px;">Genel Dijital Sağlık Puanınız</h3>
                     <div style="font-size: 48px; font-weight: 900; color: ${scores?.totalScore < 50 ? '#dc2626' : (scores?.totalScore < 75 ? '#ea580c' : '#16a34a')}; margin: 0;">
                         ${scores?.totalScore || 0} <span style="font-size: 20px; color: #94a3b8;">/ 100</span>
                     </div>
-                    
                     <div style="text-align: left; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
                         <h4 style="color: #0f172a; font-size: 15px; margin-top: 0; margin-bottom: 15px;">📊 Kategori Bazlı Skorlarınız:</h4>
                         <ul style="list-style: none; padding: 0; margin: 0;">
@@ -180,32 +172,34 @@ export const handler = async (event) => {
                     </div>
                 </div>
                 
-                <!-- AI RAPOR İÇERİĞİ -->
+                <!-- AI RAPORU -->
                 <div style="background-color: #fff7ed; padding: 30px; margin: 0 30px; border-radius: 12px; border: 1px solid #ffedd5;">
                     <div style="font-size: 15px; line-height: 1.7; color: #334155;">
                         ${cleanReport}
                     </div>
                 </div>
                 
-                <!-- SENİN İSTEDİĞİN O EFSANE CTA (AKSYON) BUTONU VE ALANI YENİDEN BURADA -->
+                <!-- GÖRSELDEKİ BİREBİR CTA ALANI -->
                 <div style="padding: 40px 30px; text-align: center; background-color: #ffffff;">
-                    <h3 style="font-size: 22px; color: #0f172a; margin-top: 0; margin-bottom: 10px;">Raporunuzun Detayları Hazırlanıyor ⚙️</h3>
-                    <p style="font-size: 15px; color: #64748b; line-height: 1.5; margin-bottom: 25px;">Yukarıdaki analiz, sistemin tespit ettiği ilk bulgulardır. Büyüme uzmanımız <strong>Fikret Kara</strong>, verdiğiniz tüm cevapları tek tek inceleyerek size özel <strong>Nihai Büyüme Stratejinizi</strong> oluşturacaktır.</p>
+                    <h2 style="font-size: 26px; font-weight: 800; color: #0f172a; margin-top: 0; margin-bottom: 15px;">Raporunuzun Detayları Hazırlanıyor ⚙️</h2>
+                    <p style="font-size: 16px; color: #475569; line-height: 1.6; margin-bottom: 30px; padding: 0 10px;">Yukarıdaki analiz, sistemin tespit ettiği ilk bulgulardır. Büyüme uzmanımız <strong>Fikret Kara</strong>, verdiğiniz tüm cevapları tek tek inceleyerek size özel <strong>Nihai Büyüme Stratejinizi</strong> oluşturacaktır.</p>
                     
                     <a href="https://wa.me/905379484868?text=Merhaba, Dijital Sağlık Analizimi tamamladım. Fikret Bey ile strateji görüşmesi planlamak istiyorum." 
-                       style="display: inline-block; background-color: #ea580c; color: #ffffff; font-size: 16px; font-weight: bold; text-decoration: none; padding: 18px 36px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 10px 15px -3px rgba(234, 88, 12, 0.3);">
+                       style="display: inline-block; background-color: #f15a22; color: #ffffff; font-size: 18px; font-weight: 900; text-decoration: none; padding: 22px 45px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 10px 20px -5px rgba(241, 90, 34, 0.4);">
                        WHATSAPP'TAN UZMANA BAĞLAN
                     </a>
                     
-                    <p style="margin-top: 20px; font-size: 14px; color: #94a3b8;">Verdiğiniz numara üzerinden de sizinle iletişime geçilecektir.</p>
+                    <p style="margin-top: 25px; font-size: 14px; color: #94a3b8; font-weight: 500;">Verdiğiniz numara üzerinden de sizinle iletişime geçilecektir.</p>
                 </div>
                 
-                <!-- LACİVERT ALT BİLGİ (FOOTER) YENİDEN BURADA -->
-                <div style="background-color: #0f172a; color: #94a3b8; padding: 30px; text-align: center; font-size: 13px;">
-                    <p style="margin: 0 0 10px 0; font-weight: bold; color: #f8fafc; font-size: 16px;">METRIQ360 BÜYÜME EKİBİ</p>
-                    <p style="margin: 5px 0;">📞 +90 537 948 48 68</p>
-                    <p style="margin: 5px 0;">✉️ bilgi@metriq360.tr</p>
-                    <p style="margin: 5px 0;">🌐 <a href="https://www.metriq360.tr" style="color: #ea580c; text-decoration: none;">www.metriq360.tr</a></p>
+                <!-- GÖRSELDEKİ LACİVERT FOOTER -->
+                <div style="background-color: #121926; color: #ffffff; padding: 40px 30px; text-align: center;">
+                    <p style="margin: 0 0 15px 0; font-weight: 800; letter-spacing: 1px; font-size: 16px; text-transform: uppercase;">METRIQ360 BÜYÜME EKİBİ</p>
+                    <div style="margin-top: 15px;">
+                        <p style="margin: 8px 0; font-size: 14px;">📞 +90 537 948 48 68</p>
+                        <p style="margin: 8px 0; font-size: 14px;">✉️ <a href="mailto:bilgi@metriq360.tr" style="color: #ffffff; text-decoration: none;">bilgi@metriq360.tr</a></p>
+                        <p style="margin: 8px 0; font-size: 14px;">🌐 <a href="https://www.metriq360.tr" style="color: #ffffff; text-decoration: none;">www.metriq360.tr</a></p>
+                    </div>
                 </div>
             </div>
         `,
