@@ -23,7 +23,7 @@ export const handler = async (event) => {
     const weakSections = selectedSections.filter(n => (sectionScores[n]/sectionMaxScores[n]) < 0.4).map(getSectionTitle);
     const selectedSectionNames = selectedSections.map(getSectionTitle).join(', ');
 
-    // YENİ, DETAYLI VE UX ODAKLI PROMPT
+    // YENİ PROMPT: Tasarımı bozmaması için Markdown kuralları çok sıkılaştırıldı.
     const prompt = `
       Sen METRIQ360 markasının "Kıdemli Dijital Büyüme Stratejisti"sin. Müşteriye tokat gibi gerçekleri çarpan ama aynı zamanda vizyon sunan profesyonel bir dilin var.
       
@@ -34,12 +34,14 @@ export const handler = async (event) => {
       - Başarı Skoru: ${score}/100
 
       GÖREVİN:
-      Kullanıcıya mevcut durumunu özetleyen, kolay okunabilir, alt başlıkları ve maddeleri olan ÇARPICI bir ön analiz raporu yazmak. Müşteri ne kadar çok alan seçtiyse rapor o kadar doyurucu olmalı.
+      Kullanıcıya mevcut durumunu özetleyen, kolay okunabilir, alt başlıkları ve maddeleri olan ÇARPICI bir ön analiz raporu yazmak.
 
-      KATI KURALLAR:
-      1. ASLA genel selamlama (Merhaba Ahmet Bey vb.) veya imza (Saygılarımla, Ekip vb.) kullanma! Bunları mail şablonu otomatik atıyor. Sadece rapor içeriğini üret.
-      2. Bol bol alt başlık (###), kalın yazı (**) ve liste (-) kullan.
-      3. Emojileri profesyonelce kullan.
+      KATI FORMAT KURALLARI (BUNLARA UYMAZSAN SİSTEM ÇÖKER):
+      1. ASLA genel selamlama veya imza kullanma. Sadece rapor içeriğini üret.
+      2. Ana başlıkların başına KESİNLİKLE "### " koy. (Boşluk bırakmadan direkt satır başından başla).
+      3. Liste maddelerinin başına KESİNLİKLE tire "-" koy. Asla yıldız (*) kullanma.
+      4. Paragrafların ve listelerin başına asla boşluk (space) veya tab (girinti) koyma. Her satır en soldan başlamalı.
+      5. Emojileri profesyonelce kullan.
 
       RAPOR YAPISI ŞU ŞEKİLDE OLMALIDIR:
       
@@ -47,15 +49,13 @@ export const handler = async (event) => {
       (Kullanıcının sektörü ve genel skoru üzerinden 1-2 paragraflık genel bir değerlendirme yap.)
 
       ### 💡 Potansiyel Barındıran Güçlü Yönleriniz
-      (Şu alanlarda iyiler: ${strongSections.join(', ') || 'Henüz tam potansiyelini kullanmayan bir dijital varlık.'}. Bu alanların işletmeye nasıl para kazandıracağını listeler halinde anlat.)
+      (Şu alanlarda iyiler: ${strongSections.join(', ') || 'Henüz tam potansiyelini kullanmayan bir dijital varlık.'}. Bu alanların işletmeye nasıl para kazandıracağını "-" ile listeler halinde anlat.)
 
       ### ⚠️ Ciro Kaybı Yaşadığınız Kritik Sızıntılar
-      (Şu alanlarda zayıflar: ${weakSections.join(', ') || 'Stratejik kurgu eksikliği ve süreç optimizasyonu.'}. Bu eksikliklerin rakiplere nasıl müşteri kaptırdığını çarpıcı bir dille, liste halinde açıkla.)
+      (Şu alanlarda zayıflar: ${weakSections.join(', ') || 'Stratejik kurgu eksikliği ve süreç optimizasyonu.'}. Bu eksikliklerin rakiplere nasıl müşteri kaptırdığını çarpıcı bir dille, "-" ile liste halinde açıkla.)
 
       ### 🚀 Hızlı Aksiyon Planı (İlk 3 Adım)
       (${userInfo.sector} sektörü için hemen uygulanabilecek 3 hap bilgi/tavsiye ver.)
-      
-      (Not: Sadece bu yapıyı Markdown formatında üret, başka hiçbir şey ekleme.)
     `;
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
