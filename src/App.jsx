@@ -7,6 +7,7 @@ const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
+// Tüm Sorular (YZ'ye veri göndermek için ana dizide tutuyoruz)
 const allQuestions = [
   { id: 'q1_1', section: 1, text: 'Sosyal medya hesaplarınızda ne sıklıkla paylaşım yapıyorsunuz?' },
   { id: 'q1_2', section: 1, text: 'Her platform için ayrı bir strateji uyguluyor musunuz?' },
@@ -57,7 +58,7 @@ const allQuestions = [
   { id: 'q5_7', section: 5, text: 'CRM veya müşteri yönetim sistemi kullanıyor musunuz?' },
   { id: 'q5_8', section: 5, text: 'Pazarlama performansınızı raporlayan otomatik sistemler var mı?' },
   { id: 'q5_9', section: 5, text: 'Online formlarınızdan gelen verileri merkezi bir yerde topluyor musunuz?' },
-  { id: 'q5_10', section: 5, text: 'Dijital pazarlama süreçlerinin tümünü bir sistem dahilinde takip ediyor musunuz?' }
+  { id: 'q5_10', section: 5, text: 'Dijital pazarlama süreçlerinin tümünü bir sistem dahilinde takip ediyor musunuz?' },
 ];
 
 function App() {
@@ -69,11 +70,8 @@ function App() {
   const [selectedSections, setSelectedSections] = useState([]);
   const [answers, setAnswers] = useState({});
   const [normalizedScore, setNormalizedScore] = useState(0);
-  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
-  // YENİ: Bekleme animasyonu için state
   const [submitLoading, setSubmitLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('SONUÇLARI VE RAPORU GÖNDER');
 
@@ -105,53 +103,17 @@ function App() {
     initFirebase();
   }, []);
 
-  // PSİKOLOJİK BEKLEME ANİMASYONU (Sırayla değişen yazılar)
   useEffect(() => {
     let interval;
     if (submitLoading) {
-      const steps = [
-        "Verileriniz Şifreleniyor 🔒", 
-        "Yapay Zeka Analiz Ediyor 🧠", 
-        "Raporunuz Hazırlanıyor 📝", 
-        "E-postalar İletiliyor 📧", 
-        "Yönlendiriliyorsunuz 🚀"
-      ];
-      let stepIndex = 0;
-      setLoadingText(steps[0]);
-      
+      const steps = ["Veriler Şifreleniyor 🔒", "Röntgen Çekiliyor 🧠", "Rapor Hazırlanıyor 📝", "Yönlendiriliyorsunuz 🚀"];
+      let stepIndex = 0; setLoadingText(steps[0]);
       interval = setInterval(() => {
-        stepIndex++;
-        if (stepIndex < steps.length) {
-          setLoadingText(steps[stepIndex]);
-        }
-      }, 1000); // Her saniyede bir yazı değişecek
-    } else {
-      setLoadingText('SONUÇLARI VE RAPORU GÖNDER');
-    }
+        stepIndex++; if (stepIndex < steps.length) setLoadingText(steps[stepIndex]);
+      }, 1000);
+    } else { setLoadingText('SONUÇLARI VE RAPORU GÖNDER'); }
     return () => clearInterval(interval);
   }, [submitLoading]);
-
-  const getSectionTitle = (num) => {
-    const titles = ['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'];
-    return titles[num] || '';
-  };
-
-  const handleUserFormSubmit = (e) => {
-    e.preventDefault();
-    if (!user.name || !user.surname || !user.sector || !user.email) { setError('Lütfen tüm alanları doldurun.'); return; }
-    setError(''); setCurrentStep('quiz-select');
-  };
-
-  const handleSectionToggle = (num) => {
-    setSelectedSections(prev =>
-      prev.includes(num) ? prev.filter(s => s !== num) : [...prev, num].sort()
-    );
-  };
-
-  const startQuiz = () => {
-    if (selectedSections.length === 0) { setError('Lütfen en az bir alan seçin.'); return; }
-    setError(''); setAnswers({}); setCurrentStep('quiz');
-  };
 
   const calculateScore = () => {
     let rawTotal = 0; let rawMax = 0;
@@ -166,27 +128,19 @@ function App() {
       rawMax += sectionQs.length * 5;
     });
     const norm = rawMax > 0 ? Math.round((rawTotal / rawMax) * 100) : 0;
-    return { rawTotal, rawMax, norm, sScores, sMaxScores };
-  };
-
-  const handleFinishQuiz = () => {
-      const scoreData = calculateScore();
-      setNormalizedScore(scoreData.norm);
-      setCurrentStep('whatsapp-funnel');
+    return { norm, sScores, sMaxScores };
   };
 
   const finalSubmit = async (e) => {
     e.preventDefault();
     if (!user.whatsapp) { setError("Lütfen WhatsApp numaranızı girin."); return; }
-    
-    setSubmitLoading(true);
-    setError('');
+    setSubmitLoading(true); setError('');
     const result = calculateScore();
 
     try {
-      const baseUrl = window.location.origin === 'null' ? 'https://www.metriq360.com.tr' : window.location.origin;
+      const baseUrl = window.location.origin === 'null' ? '' : window.location.origin;
       
-      let generatedReport = "Sistem yoğunluğu nedeniyle raporunuz uzmanımız tarafından hazırlanıp iletilecektir.";
+      let generatedReport = "Raporunuz uzmanımız tarafından hazırlanacaktır.";
       try {
         const reportRes = await fetch(`${baseUrl}/.netlify/functions/generate-report`, {
           method: 'POST',
@@ -194,53 +148,44 @@ function App() {
           body: JSON.stringify({ 
             userInfo: user, 
             totalScore: result.norm, 
-            totalMaxScore: 100, 
             sectionScores: result.sScores, 
             sectionMaxScores: result.sMaxScores, 
-            selectedSections 
+            selectedSections,
+            answers, // ARTIK CEVAPLAR GİDİYOR
+            allQuestions // ARTIK SORU METİNLERİ GİDİYOR
           }),
         });
         if (reportRes.ok) {
-            const reportData = await reportRes.json();
-            if(reportData.detailedReport) generatedReport = reportData.detailedReport;
+            const data = await reportRes.json();
+            generatedReport = data.detailedReport;
         }
-      } catch(aiError) { console.log("AI çalışmadı, standart metne geçildi."); }
+      } catch(aiE) { console.error(aiE); }
 
-      const emailRes = await fetch(`${baseUrl}/.netlify/functions/send-email`, {
+      await fetch(`${baseUrl}/.netlify/functions/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-            userInfo: user, 
-            report: generatedReport, 
-            scores: { totalScore: result.norm, totalMaxScore: 100, sectionScores: result.sScores, sectionMaxScores: result.sMaxScores },
-            answers, 
-            selectedSections 
+          userInfo: user, 
+          report: generatedReport, 
+          scores: { totalScore: result.norm, sectionScores: result.sScores, sectionMaxScores: result.sMaxScores }, 
+          answers, 
+          selectedSections 
         }),
       });
 
-      if (!emailRes.ok) {
-          const errText = await emailRes.text();
-          throw new Error(`Mail servisi hatası: ${errText}`);
-      }
-
-      try {
-        if (db && userId) {
-            await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'leads'), {
-                timestamp: new Date(), ...user, score: result.norm, answers, report: generatedReport
-            });
-        }
-      } catch(fbErr) {}
-
       window.location.href = "https://www.metriq360.tr/tesekkurler-test";
-
     } catch (err) {
-      console.error(err);
-      setError(`ZIRHLI SİSTEM HATASI: E-posta veya Sunucu bağlantısı kurulamadı. Hata detayı: ${err.message}`);
+      setError(`Hata: ${err.message}`);
       setSubmitLoading(false);
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-orange-500 font-black tracking-widest animate-pulse italic text-xl uppercase">Metriq360 Yükleniyor...</div>;
+  const getSectionTitle = (num) => {
+    const titles = ['', 'Sosyal Medya', 'Yerel SEO', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'];
+    return titles[num] || '';
+  };
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-orange-500 font-black animate-pulse uppercase italic text-xl">Metriq360 Yükleniyor...</div>;
 
   return (
     <div className="min-h-screen bg-orange-50 flex flex-col items-center justify-center p-4 font-sans text-slate-900">
@@ -248,40 +193,33 @@ function App() {
         
         {currentStep !== 'whatsapp-funnel' && (
             <div className="mb-10">
-                <div className="absolute top-6 left-6 text-orange-400 opacity-60">
-                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
-                </div>
-                <h1 className="text-3xl md:text-5xl font-black text-slate-900 mb-1 tracking-tight uppercase">METR<span className="text-orange-500">IQ</span>360</h1>
-                <p className="text-slate-400 font-bold uppercase tracking-[0.15em] text-[10px] md:text-[11px]">DİJİTAL PAZARLAMA SAĞLIK TESTİ</p>
+                <h1 className="text-3xl md:text-5xl font-black text-slate-900 mb-1 tracking-tight uppercase italic">METR<span className="text-orange-500">IQ</span>360</h1>
+                <p className="text-slate-400 font-bold uppercase tracking-[0.15em] text-[10px]">DİJİTAL PAZARLAMA SAĞLIK TESTİ</p>
             </div>
         )}
         
-        {error && (
-          <div className="bg-red-50 text-red-700 p-5 rounded-2xl mb-8 text-sm border-l-8 border-red-500 font-bold text-left shadow-sm">
-            🚨 {error}
-          </div>
-        )}
+        {error && <div className="bg-red-50 text-red-700 p-5 rounded-2xl mb-8 text-sm border-l-8 border-red-500 font-bold text-left shadow-sm">🚨 {error}</div>}
 
         {currentStep === 'form' && (
-          <form onSubmit={handleUserFormSubmit} className="space-y-5 text-left">
+          <form onSubmit={(e)=>{e.preventDefault(); setCurrentStep('quiz-select')}} className="space-y-5 text-left">
             <input type="text" placeholder="Adınız" value={user.name} onChange={(e)=>setUser({...user, name: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 outline-none text-lg font-medium" required />
             <input type="text" placeholder="Soyadınız" value={user.surname} onChange={(e)=>setUser({...user, surname: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 outline-none text-lg font-medium" required />
             <input type="text" placeholder="Sektörünüz (Örn: Kuaför, Mobilya)" value={user.sector} onChange={(e)=>setUser({...user, sector: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 outline-none text-lg font-medium" required />
             <input type="email" placeholder="E-posta Adresiniz" value={user.email} onChange={(e)=>setUser({...user, email: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 outline-none text-lg font-medium" required />
-            <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-6 rounded-[1.5rem] shadow-xl uppercase tracking-widest transition-transform hover:-translate-y-1">DİJİTAL SAĞLIK TESTİNİ BAŞLAT</button>
+            <button type="submit" className="w-full bg-orange-500 text-white font-black py-6 rounded-[1.5rem] shadow-xl uppercase tracking-widest transition-transform hover:-translate-y-1">TESTİ BAŞLAT</button>
           </form>
         )}
 
         {currentStep === 'quiz-select' && (
           <div className="space-y-4">
-            <h2 className="text-xl font-bold text-slate-800 mb-6">Analiz Alanlarını Seçin</h2>
+            <h2 className="text-xl font-bold mb-6 text-slate-800">Analiz Alanlarını Seçin</h2>
             {[1, 2, 3, 4, 5].map(num => (
               <label key={num} className={`flex items-center p-5 rounded-2xl border-2 cursor-pointer transition text-left ${selectedSections.includes(num) ? 'bg-orange-50 border-orange-500' : 'bg-slate-50 border-transparent hover:border-orange-200'}`}>
-                <input type="checkbox" checked={selectedSections.includes(num)} onChange={() => handleSectionToggle(num)} className="hidden" />
+                <input type="checkbox" checked={selectedSections.includes(num)} onChange={() => setSelectedSections(prev => prev.includes(num) ? prev.filter(s => s !== num) : [...prev, num].sort())} className="hidden" />
                 <span className={`text-lg font-bold ${selectedSections.includes(num) ? 'text-orange-600' : 'text-slate-500'}`}>{getSectionTitle(num)}</span>
               </label>
             ))}
-            <button onClick={startQuiz} className="w-full bg-orange-500 text-white font-black py-5 rounded-2xl mt-6 uppercase tracking-widest shadow-md hover:bg-orange-600 transition">Sorulara Geç</button>
+            <button onClick={() => selectedSections.length > 0 ? setCurrentStep('quiz') : setError('Lütfen en az bir alan seçin.')} className="w-full bg-orange-500 text-white font-black py-5 rounded-2xl mt-6 uppercase tracking-widest shadow-md">Sorulara Geç</button>
           </div>
         )}
 
@@ -293,67 +231,41 @@ function App() {
                 {allQuestions.filter(q => q.section === sNum).map((q, idx) => (
                   <div key={q.id} className="bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-sm">
                     <p className="font-bold text-slate-800 mb-4 text-sm">{idx + 1}. {q.text}</p>
-                    <div className="flex justify-between gap-1 md:gap-2 text-center">
+                    <div className="flex justify-between gap-1 md:gap-2">
                       {[1, 2, 3, 4, 5].map(v => (
-                        <button key={v} onClick={() => setAnswers(prev => ({...prev, [q.id]: v}))} className={`flex-1 py-4 rounded-xl font-black text-sm transition ${answers[q.id] === v ? 'bg-orange-500 text-white shadow-md scale-105' : 'bg-white text-slate-400 border border-slate-200'}`}>{v}</button>
+                        <button key={v} onClick={() => setAnswers(prev => ({...prev, [q.id]: v}))} className={`flex-1 py-4 rounded-xl font-black text-sm transition ${answers[q.id] === v ? 'bg-orange-500 text-white shadow-md scale-105' : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-100'}`}>{v}</button>
                       ))}
                     </div>
                   </div>
                 ))}
               </div>
             ))}
-            <button onClick={handleFinishQuiz} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-5 rounded-2xl shadow-lg uppercase tracking-widest">Testi Tamamla</button>
+            <button onClick={() => { setNormalizedScore(calculateScore().norm); setCurrentStep('whatsapp-funnel'); }} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-5 rounded-2xl shadow-lg uppercase tracking-widest">Testi Tamamla</button>
           </div>
         )}
 
         {currentStep === 'whatsapp-funnel' && (
           <div className="space-y-6 animate-in fade-in zoom-in duration-500 mt-2">
-            <div className="bg-red-600 text-white p-8 rounded-[2rem] shadow-2xl border-4 border-red-700 text-center relative overflow-hidden">
-                <h2 className="text-2xl md:text-3xl font-black mb-4 relative z-10">🚨 DİJİTAL SAĞLIK PUANINIZ: {normalizedScore} / 100</h2>
-                <div className="bg-red-800/60 p-4 rounded-xl relative z-10 border border-red-500/50">
-                    <p className="text-red-50 font-bold text-sm md:text-base leading-snug">⚠️ Durum: İşletmenizin dijital varlıklarında acil müdahale gerektiren ciro kayıpları tespit edildi!</p>
+            <div className="bg-red-600 text-white p-8 rounded-[2rem] shadow-2xl border-4 border-red-700 text-center">
+                <h2 className="text-2xl md:text-3xl font-black mb-4 italic">🚨 DİJİTAL SAĞLIK PUANINIZ: {normalizedScore} / 100</h2>
+                <div className="bg-red-800/60 p-4 rounded-xl border border-red-500/50">
+                    <p className="text-red-50 font-bold text-sm md:text-base leading-snug italic">⚠️ Durum: İşletmenizin dijital varlıklarında acil müdahale gerektiren ciro kayıpları tespit edildi!</p>
                 </div>
             </div>
 
-            <div className="bg-white p-6 md:p-8 rounded-[2rem] border-2 border-orange-200 shadow-xl text-left relative mt-6">
-                <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-6 border-b-2 border-orange-100 pb-3">Sırada Ne Var? Lütfen Dikkatlice Okuyun 👇</h3>
-                <ul className="space-y-6">
-                    <li className="flex items-start gap-4">
-                        <div className="bg-emerald-100 text-emerald-600 p-3 rounded-2xl text-2xl shadow-sm">📧</div>
-                        <div>
-                            <strong className="text-slate-900 text-lg block mb-1">1. Ön Analiziniz E-postanıza Gönderiliyor</strong>
-                            <p className="text-slate-600 text-sm md:text-base font-medium leading-relaxed">Yapay zeka tarafından hazırlanan ilk durum tespit raporunuz ve detaylı skor dökümünüz onayınızla birlikte <strong className="text-orange-600">{user.email}</strong> adresine otomatik iletilecektir.</p>
-                        </div>
-                    </li>
-                    <li className="flex items-start gap-4">
-                        <div className="bg-orange-100 text-orange-600 p-3 rounded-2xl text-2xl shadow-sm">📲</div>
-                        <div>
-                            <strong className="text-slate-900 text-lg block mb-1">2. Uzmanımız Detaylı Rapor İçin Ulaşacak</strong>
-                            <p className="text-slate-600 text-sm md:text-base font-medium leading-relaxed">Büyüme uzmanımız <strong>Fikret Kara</strong>, verdiğiniz tüm cevapları bizzat inceleyip ciro kayıplarınızı nasıl durduracağınızı gösteren <strong>size özel detaylı bir yol haritası</strong> hazırlayacak. Bu özel raporu size direkt iletebilmemiz için lütfen aşağıdan numaranızı onaylayın.</p>
-                        </div>
-                    </li>
+            <div className="bg-white p-6 md:p-8 rounded-[2rem] border-2 border-orange-200 shadow-xl text-left mt-6">
+                <h3 className="text-xl font-black text-slate-900 mb-6 border-b-2 border-orange-100 pb-3 italic uppercase">Sırada Ne Var? 👇</h3>
+                <ul className="space-y-6 text-sm md:text-base font-medium">
+                    <li className="flex gap-3">📧 <span><strong>1. Ön Analiziniz E-postanıza Gönderiliyor:</strong> Yapay zeka dökümünüz <strong>{user.email}</strong> adresine iletilecektir.</span></li>
+                    <li className="flex gap-3">📲 <span><strong>2. Uzmanımız Randevu İçin Ulaşacak:</strong> Fikret Kara size özel yol haritasıyla <strong>WhatsApp</strong> üzerinden ulaşacaktır.</span></li>
                 </ul>
             </div>
 
             <form onSubmit={finalSubmit} className="space-y-5 text-left mt-8">
-                <div className="ml-2"><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1">WhatsApp Numaranız</label></div>
-                <input type="tel" placeholder="Örn: 0532 123 45 67" value={user.whatsapp} onChange={(e)=>setUser({...user, whatsapp: e.target.value})} disabled={submitLoading} className="w-full px-8 py-6 rounded-[1.5rem] border border-slate-200 bg-white focus:ring-4 focus:ring-orange-500 outline-none transition text-xl font-black placeholder:text-slate-300 shadow-sm disabled:opacity-50" required />
-                
-                {/* GÜNCELLENMİŞ ANİMASYONLU BUTON */}
-                <button 
-                    type="submit" 
-                    disabled={submitLoading} 
-                    className={`w-full flex items-center justify-center gap-3 text-white font-black py-6 rounded-[1.75rem] shadow-2xl uppercase tracking-widest text-sm md:text-base transition-all ${submitLoading ? 'bg-slate-700 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700 transform hover:scale-105 active:scale-95'}`}
-                >
-                    {submitLoading && (
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    )}
+                <input type="tel" placeholder="WhatsApp Numaranız (Örn: 0532...)" value={user.whatsapp} onChange={(e)=>setUser({...user, whatsapp: e.target.value})} disabled={submitLoading} className="w-full px-8 py-6 rounded-[1.5rem] border-2 border-slate-200 bg-white focus:border-orange-500 focus:ring-4 focus:ring-orange-100 outline-none text-xl font-black transition-all" required />
+                <button type="submit" disabled={submitLoading} className={`w-full flex items-center justify-center gap-3 text-white font-black py-6 rounded-[1.75rem] shadow-2xl uppercase tracking-widest transition-all ${submitLoading ? 'bg-slate-700' : 'bg-orange-600 hover:bg-orange-700 transform hover:scale-[1.02] active:scale-95'}`}>
                     {loadingText}
                 </button>
-
             </form>
           </div>
         )}
