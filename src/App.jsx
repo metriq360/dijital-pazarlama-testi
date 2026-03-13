@@ -3,7 +3,6 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc } from 'firebase/firestore';
 
-// Firebase ve App ID yapılandırması
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
@@ -58,7 +57,7 @@ const allQuestions = [
   { id: 'q5_7', section: 5, text: 'CRM veya müşteri yönetim sistemi kullanıyor musunuz?' },
   { id: 'q5_8', section: 5, text: 'Pazarlama performansınızı raporlayan otomatik sistemler var mı?' },
   { id: 'q5_9', section: 5, text: 'Online formlarınızdan gelen verileri merkezi bir yerde topluyor musunuz?' },
-  { id: 'q5_10', section: 5, text: 'Dijital pazarlama süreçlerinin tümünü bir sistem dahilinde takip ediyor musunuz?' },
+  { id: 'q5_10', section: 5, text: 'Dijital pazarlama süreçlerinin tümünü bir sistem dahilinde takip ediyor musunuz?' }
 ];
 
 function App() {
@@ -103,15 +102,15 @@ function App() {
     initFirebase();
   }, []);
 
+  const getSectionTitle = (num) => {
+    const titles = ['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'];
+    return titles[num] || '';
+  };
+
   const handleUserFormSubmit = (e) => {
     e.preventDefault();
     if (!user.name || !user.surname || !user.sector || !user.email) { setError('Lütfen tüm alanları doldurun.'); return; }
     setError(''); setCurrentStep('quiz-select');
-  };
-
-  const getSectionTitle = (num) => {
-    const titles = ['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'];
-    return titles[num] || '';
   };
 
   const handleSectionToggle = (num) => {
@@ -153,15 +152,13 @@ function App() {
     
     setSubmitLoading(true);
     setError('');
-
-    // Skorları tekrar hesapla ki backend'e gönderebilelim
     const result = calculateScore();
 
     try {
-      const baseUrl = window.location.origin === 'null' ? '' : window.location.origin;
+      const baseUrl = window.location.origin === 'null' ? 'https://www.metriq360.com.tr' : window.location.origin;
       
-      // 1. ÖNCE ARKA PLANDA AI RAPORUNU OLUŞTUR (Ekranda göstermiyoruz ama mailler için lazım)
-      let generatedReport = "Rapor hazırlanırken kısa süreli bir yoğunluk oluştu. Uzmanımız Fikret Kara size özel detaylı analizi bizzat iletecektir.";
+      // 1. YAPAY ZEKA RAPORUNU ARKA PLANDA ÜRET
+      let generatedReport = "Sistem yoğunluğu nedeniyle raporunuz uzmanımız tarafından hazırlanıp iletilecektir.";
       try {
         const reportRes = await fetch(`${baseUrl}/.netlify/functions/generate-report`, {
           method: 'POST',
@@ -177,39 +174,44 @@ function App() {
         });
         if (reportRes.ok) {
             const reportData = await reportRes.json();
-            generatedReport = reportData.detailedReport;
+            if(reportData.detailedReport) generatedReport = reportData.detailedReport;
         }
-      } catch(aiError) {
-          console.error("AI Hatası:", aiError);
-      }
+      } catch(aiError) { console.log("AI çalışmadı, standart metne geçildi."); }
 
-      // 2. HEM SANA HEM MÜŞTERİYE E-POSTA GÖNDER (Tüm detaylar, cevaplar ve raporla birlikte)
-      await fetch(`${baseUrl}/.netlify/functions/send-email`, {
+      // 2. MAİL GÖNDERİMİ (SANA VE MÜŞTERİYE KUSURSUZ GİDECEK)
+      const emailRes = await fetch(`${baseUrl}/.netlify/functions/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
             userInfo: user, 
-            report: generatedReport, // Ürettiğimiz AI raporunu ekledik
+            report: generatedReport, 
             scores: { totalScore: result.norm, totalMaxScore: 100, sectionScores: result.sScores, sectionMaxScores: result.sMaxScores },
             answers, 
             selectedSections 
         }),
       });
 
-      // 3. Firebase Kaydı (Yedekleme)
-      if (db && userId) {
-        await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'leads'), {
-          timestamp: new Date(), ...user, score: result.norm, answers, report: generatedReport
-        });
+      if (!emailRes.ok) {
+          const errText = await emailRes.text();
+          throw new Error(`Mail servisi hatası: ${errText}`);
       }
 
-      // 4. İŞLEM BAŞARILI, TEŞEKKÜRLER SAYFASINA UÇUR
+      // 3. FİREBASE YEDEKLEME
+      try {
+        if (db && userId) {
+            await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'leads'), {
+                timestamp: new Date(), ...user, score: result.norm, answers, report: generatedReport
+            });
+        }
+      } catch(fbErr) {}
+
+      // 4. BAŞARILI, TEŞEKKÜRLER SAYFASINA GİT
       window.location.href = "https://www.metriq360.tr/tesekkurler-test";
 
     } catch (err) {
       console.error(err);
-      setError("Bağlantı hatası oluştu, ancak yönlendiriliyorsunuz...");
-      setTimeout(() => { window.location.href = "https://www.metriq360.tr/tesekkurler-test"; }, 1500);
+      setError(`ZIRHLI SİSTEM HATASI: E-posta veya Sunucu bağlantısı kurulamadı. Hata detayı: ${err.message}`);
+      setSubmitLoading(false);
     }
   };
 
@@ -219,7 +221,6 @@ function App() {
     <div className="min-h-screen bg-orange-50 flex flex-col items-center justify-center p-4 font-sans text-slate-900">
       <div className="bg-white p-6 md:p-10 rounded-[2.5rem] shadow-2xl w-full max-w-2xl border-t-[10px] border-orange-500 text-center relative overflow-hidden">
         
-        {/* LOGO ALANI */}
         {currentStep !== 'whatsapp-funnel' && (
             <div className="mb-10">
                 <div className="absolute top-6 left-6 text-orange-400 opacity-60">
@@ -231,47 +232,34 @@ function App() {
         )}
         
         {error && (
-          <div className="bg-red-50 text-red-700 p-5 rounded-2xl mb-8 text-sm border-l-8 border-red-500 font-bold text-left">
-            ⚠️ {error}
+          <div className="bg-red-50 text-red-700 p-5 rounded-2xl mb-8 text-sm border-l-8 border-red-500 font-bold text-left shadow-sm">
+            🚨 {error}
           </div>
         )}
 
-        {/* ADIM 1: GİRİŞ FORMU */}
         {currentStep === 'form' && (
           <form onSubmit={handleUserFormSubmit} className="space-y-5 text-left">
-            <input type="text" placeholder="Adınız" value={user.name} onChange={(e)=>setUser({...user, name: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 focus:bg-white outline-none transition text-lg font-medium" required />
-            <input type="text" placeholder="Soyadınız" value={user.surname} onChange={(e)=>setUser({...user, surname: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 focus:bg-white outline-none transition text-lg font-medium" required />
-            <input type="text" placeholder="Sektörünüz" value={user.sector} onChange={(e)=>setUser({...user, sector: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 focus:bg-white outline-none transition text-lg font-medium" required />
-            <input type="email" placeholder="E-posta Adresiniz" value={user.email} onChange={(e)=>setUser({...user, email: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 focus:bg-white outline-none transition text-lg font-medium" required />
-            <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-6 rounded-[1.5rem] shadow-xl uppercase tracking-widest transition-all transform hover:-translate-y-1 text-sm md:text-base">DİJİTAL SAĞLIK TESTİNİ BAŞLAT</button>
+            <input type="text" placeholder="Adınız" value={user.name} onChange={(e)=>setUser({...user, name: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 outline-none text-lg font-medium" required />
+            <input type="text" placeholder="Soyadınız" value={user.surname} onChange={(e)=>setUser({...user, surname: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 outline-none text-lg font-medium" required />
+            <input type="text" placeholder="Sektörünüz" value={user.sector} onChange={(e)=>setUser({...user, sector: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 outline-none text-lg font-medium" required />
+            <input type="email" placeholder="E-posta Adresiniz" value={user.email} onChange={(e)=>setUser({...user, email: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 outline-none text-lg font-medium" required />
+            <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-6 rounded-[1.5rem] shadow-xl uppercase tracking-widest transition-transform hover:-translate-y-1">DİJİTAL SAĞLIK TESTİNİ BAŞLAT</button>
           </form>
         )}
 
-        {/* ADIM 2: BÖLÜM SEÇİMİ */}
         {currentStep === 'quiz-select' && (
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-slate-800 mb-6">Analiz Alanlarını Seçin</h2>
             {[1, 2, 3, 4, 5].map(num => (
-              <label 
-                key={num} 
-                className={`flex items-center p-5 rounded-2xl border-2 cursor-pointer transition text-left ${selectedSections.includes(num) ? 'bg-orange-50 border-orange-500' : 'bg-slate-50 border-transparent hover:border-orange-200'}`}
-              >
-                <input 
-                  type="checkbox" 
-                  checked={selectedSections.includes(num)} 
-                  onChange={() => handleSectionToggle(num)} 
-                  className="hidden" 
-                />
-                <span className={`text-lg font-bold ${selectedSections.includes(num) ? 'text-orange-600' : 'text-slate-500'}`}>
-                  {getSectionTitle(num)}
-                </span>
+              <label key={num} className={`flex items-center p-5 rounded-2xl border-2 cursor-pointer transition text-left ${selectedSections.includes(num) ? 'bg-orange-50 border-orange-500' : 'bg-slate-50 border-transparent hover:border-orange-200'}`}>
+                <input type="checkbox" checked={selectedSections.includes(num)} onChange={() => handleSectionToggle(num)} className="hidden" />
+                <span className={`text-lg font-bold ${selectedSections.includes(num) ? 'text-orange-600' : 'text-slate-500'}`}>{getSectionTitle(num)}</span>
               </label>
             ))}
             <button onClick={startQuiz} className="w-full bg-orange-500 text-white font-black py-5 rounded-2xl mt-6 uppercase tracking-widest shadow-md hover:bg-orange-600 transition">Sorulara Geç</button>
           </div>
         )}
 
-        {/* ADIM 3: SORULAR */}
         {currentStep === 'quiz' && (
           <div className="space-y-8 text-left">
             {selectedSections.map(sNum => (
@@ -282,13 +270,7 @@ function App() {
                     <p className="font-bold text-slate-800 mb-4 text-sm">{idx + 1}. {q.text}</p>
                     <div className="flex justify-between gap-1 md:gap-2 text-center">
                       {[1, 2, 3, 4, 5].map(v => (
-                        <button 
-                          key={v} 
-                          onClick={() => setAnswers(prev => ({...prev, [q.id]: v}))} 
-                          className={`flex-1 py-4 rounded-xl font-black text-sm transition ${answers[q.id] === v ? 'bg-orange-500 text-white shadow-md scale-105' : 'bg-white text-slate-400 hover:bg-slate-100 border border-slate-200'}`}
-                        >
-                          {v}
-                        </button>
+                        <button key={v} onClick={() => setAnswers(prev => ({...prev, [q.id]: v}))} className={`flex-1 py-4 rounded-xl font-black text-sm transition ${answers[q.id] === v ? 'bg-orange-500 text-white shadow-md scale-105' : 'bg-white text-slate-400 border border-slate-200'}`}>{v}</button>
                       ))}
                     </div>
                   </div>
@@ -299,23 +281,15 @@ function App() {
           </div>
         )}
 
-        {/* ADIM 4: KIRMIZI KUTU VE WHATSAPP FUNNEL (RAPOR EKRANI YOK) */}
         {currentStep === 'whatsapp-funnel' && (
           <div className="space-y-6 animate-in fade-in zoom-in duration-500 mt-2">
-            
-            {/* ŞOK ETKİSİ YARATAN KIRMIZI KUTU */}
             <div className="bg-red-600 text-white p-8 rounded-[2rem] shadow-2xl border-4 border-red-700 text-center relative overflow-hidden">
-                <h2 className="text-2xl md:text-3xl font-black mb-4 relative z-10">
-                   🚨 DİJİTAL SAĞLIK PUANINIZ: {normalizedScore} / 100
-                </h2>
+                <h2 className="text-2xl md:text-3xl font-black mb-4 relative z-10">🚨 DİJİTAL SAĞLIK PUANINIZ: {normalizedScore} / 100</h2>
                 <div className="bg-red-800/60 p-4 rounded-xl relative z-10 border border-red-500/50">
-                    <p className="text-red-50 font-bold text-sm md:text-base leading-snug">
-                        ⚠️ Durum: İşletmenizin dijital varlıklarında acil müdahale gerektiren ciro kayıpları tespit edildi!
-                    </p>
+                    <p className="text-red-50 font-bold text-sm md:text-base leading-snug">⚠️ Durum: İşletmenizin dijital varlıklarında acil müdahale gerektiren ciro kayıpları tespit edildi!</p>
                 </div>
             </div>
 
-            {/* ÇÖZÜM VE NET BİLGİLENDİRME ALANI (BÜYÜK VE DİKKAT ÇEKİCİ) */}
             <div className="bg-white p-6 md:p-8 rounded-[2rem] border-2 border-orange-200 shadow-xl text-left relative mt-6">
                 <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-6 border-b-2 border-orange-100 pb-3">Sırada Ne Var? Lütfen Dikkatlice Okuyun 👇</h3>
                 <ul className="space-y-6">
@@ -336,31 +310,15 @@ function App() {
                 </ul>
             </div>
 
-            {/* WHATSAPP ALMA FORMU */}
             <form onSubmit={finalSubmit} className="space-y-5 text-left mt-8">
-                <div className="ml-2">
-                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1">WhatsApp Numaranız</label>
-                </div>
-                <input 
-                    type="tel" 
-                    placeholder="Örn: 0532 123 45 67" 
-                    value={user.whatsapp} 
-                    onChange={(e)=>setUser({...user, whatsapp: e.target.value})} 
-                    className="w-full px-8 py-6 rounded-[1.5rem] border border-slate-200 bg-white focus:ring-4 focus:ring-orange-500 outline-none transition text-xl font-black placeholder:text-slate-300 shadow-sm" 
-                    required 
-                />
-                
-                <button 
-                    type="submit" 
-                    disabled={submitLoading} 
-                    className={`w-full ${submitLoading ? 'bg-slate-400' : 'bg-orange-600 hover:bg-orange-700'} text-white font-black py-6 rounded-[1.75rem] shadow-2xl uppercase tracking-widest text-sm md:text-base transition-all transform hover:scale-105 active:scale-95`}
-                >
+                <div className="ml-2"><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1">WhatsApp Numaranız</label></div>
+                <input type="tel" placeholder="Örn: 0532 123 45 67" value={user.whatsapp} onChange={(e)=>setUser({...user, whatsapp: e.target.value})} className="w-full px-8 py-6 rounded-[1.5rem] border border-slate-200 bg-white focus:ring-4 focus:ring-orange-500 outline-none transition text-xl font-black placeholder:text-slate-300 shadow-sm" required />
+                <button type="submit" disabled={submitLoading} className={`w-full ${submitLoading ? 'bg-slate-400' : 'bg-orange-600 hover:bg-orange-700'} text-white font-black py-6 rounded-[1.75rem] shadow-2xl uppercase tracking-widest text-sm md:text-base transition-all`}>
                     {submitLoading ? 'RAPORLAR GÖNDERİLİYOR...' : 'SONUÇLARI VE RAPORU GÖNDER'}
                 </button>
             </form>
           </div>
         )}
-
       </div>
     </div>
   );
