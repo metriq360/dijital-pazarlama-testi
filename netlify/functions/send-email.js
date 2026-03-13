@@ -54,21 +54,21 @@ const allQuestions = [
   { id: 'q5_10', section: 5, text: 'Dijital pazarlama süreçlerinin tümünü bir sistem dahilinde takip ediyor musunuz?' }
 ];
 
-// Markdown temizleyici
+// Markdown temizleyici (Şık Tasarım İçin)
 const cleanMarkdownForEmail = (text) => {
     if (!text) return "Rapor hazırlanıyor...";
     return text
-        .replace(/###\s+(.*)/g, '<h3 style="color:#ea580c; font-size:18px; margin-top:25px; margin-bottom:15px; border-bottom:2px solid #fdba74; padding-bottom:8px; font-weight:800; letter-spacing:0.5px;">$1</h3>')
-        .replace(/##\s+(.*)/g, '<h2 style="color:#c2410c; font-size:22px; margin-top:20px;">$1</h2>')
-        .replace(/#\s+(.*)/g, '<h1 style="color:#9a3412; font-size:26px;">$1</h1>')
+        .replace(/^\s*###\s+(.*)/gm, '<h3 style="color:#ea580c; font-size:18px; margin-top:25px; margin-bottom:15px; border-bottom:2px solid #fdba74; padding-bottom:8px; font-weight:800; letter-spacing:0.5px;">$1</h3>')
+        .replace(/^\s*##\s+(.*)/gm, '<h2 style="color:#c2410c; font-size:22px; margin-top:20px;">$1</h2>')
+        .replace(/^\s*#\s+(.*)/gm, '<h1 style="color:#9a3412; font-size:26px;">$1</h1>')
         .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#0f172a; font-weight:800;">$1</strong>')
-        .replace(/^[-*]\s+(.*)/gm, '<li style="margin-bottom:12px; color:#334155; line-height:1.6; padding-left:5px;"><span style="color:#ea580c; font-weight:bold;">•</span> $1</li>')
+        .replace(/^\s*[-*]\s+(.*)/gm, '<li style="margin-bottom:12px; color:#334155; line-height:1.6; padding-left:5px;"><span style="color:#ea580c; font-weight:bold;">•</span> $1</li>')
         .replace(/\*(.*?)\*/g, '<em style="color:#475569;">$1</em>')
         .replace(/\n/g, '<br>');
 };
 
 const getSectionTitle = (num) => {
-    const titles = ['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'];
+    const titles = ['', 'Sosyal Medya Yönetimi', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'];
     return titles[num] || '';
 };
 
@@ -87,7 +87,7 @@ export const handler = async (event) => {
 
     const cleanReport = cleanMarkdownForEmail(report);
 
-    // ADMİNE GİDEN CEVAP LİSTESİ HAZIRLIĞI
+    // ADMİNE GİDEN CEVAP LİSTESİ
     let detailsHTML = `<h2 style="color:#d32f2f;">Müşterinin Test Cevapları:</h2>`;
     if (selectedSections && answers) {
         selectedSections.forEach(sNum => {
@@ -108,7 +108,7 @@ export const handler = async (event) => {
         });
     }
 
-    // 1. SANA (ADMİNE) GELEN MAİL (UNUTTUĞUM KISMI GERİ EKLEDİM)
+    // 1. SANA (ADMİNE) GELEN MAİL
     const mailToAdmin = {
       from: `"Metriq360 Funnel" <${process.env.EMAIL_USER}>`,
       to: process.env.ADMIN_EMAIL,
@@ -127,7 +127,6 @@ export const handler = async (event) => {
                 <p style="font-size: 18px;"><b>Genel Skor:</b> %${scores?.totalScore || 0}</p>
             </div>
             
-            <!-- İŞTE EKSİK OLAN O LANET YER BURASIYDI, GERİ EKLEDİM -->
             <div style="margin-top: 30px;">
                 ${detailsHTML}
             </div>
@@ -141,7 +140,7 @@ export const handler = async (event) => {
       `,
     };
 
-    // 2. MÜŞTERİYE GİDEN UX ODAKLI PREMIUM MAİL (BURASI ZATEN ÇALIŞIYOR)
+    // 2. MÜŞTERİYE GİDEN EKSİKSİZ, PREMIUM TASARIM (EKSİKLER GİDERİLDİ!)
     const mailToUser = {
         from: `"Metriq360 Strateji" <${process.env.EMAIL_USER}>`,
         to: userInfo.email,
@@ -158,17 +157,37 @@ export const handler = async (event) => {
                 <!-- GİRİŞ BÖLÜMÜ -->
                 <div style="padding: 30px 30px 10px 30px;">
                     <h2 style="font-size: 20px; color: #0f172a; margin-top: 0;">Merhaba Sayın ${userInfo.name} ${userInfo.surname},</h2>
-                    <p style="font-size: 15px; line-height: 1.6; color: #475569;">Dijital Pazarlama Sağlık Testi verileriniz yapay zeka altyapımız tarafından analiz edildi. Aşağıda mevcut dijital varlıklarınızın genel bir röntgenini bulabilirsiniz.</p>
+                    <p style="font-size: 15px; line-height: 1.6; color: #475569;">Dijital Pazarlama Sağlık Testi verileriniz yapay zeka altyapımız tarafından analiz edildi. Aşağıda <b>detaylı skor dökümünüzü</b> ve dijital varlıklarınızın genel röntgenini bulabilirsiniz.</p>
+                </div>
+
+                <!-- SKOR DÖKÜMÜ TABLOSU -->
+                <div style="background-color: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 25px; margin: 0 30px 20px 30px; text-align: center;">
+                    <h3 style="color: #64748b; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; margin-top: 0; margin-bottom: 10px;">Genel Dijital Sağlık Puanınız</h3>
+                    <div style="font-size: 48px; font-weight: 900; color: ${scores?.totalScore < 50 ? '#dc2626' : (scores?.totalScore < 75 ? '#ea580c' : '#16a34a')}; margin: 0;">
+                        ${scores?.totalScore || 0} <span style="font-size: 20px; color: #94a3b8;">/ 100</span>
+                    </div>
+                    
+                    <div style="text-align: left; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                        <h4 style="color: #0f172a; font-size: 15px; margin-top: 0; margin-bottom: 15px;">📊 Kategori Bazlı Skorlarınız:</h4>
+                        <ul style="list-style: none; padding: 0; margin: 0;">
+                            ${(selectedSections || []).map(sNum => `
+                                <li style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #334155; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px;">
+                                    <strong>${getSectionTitle(sNum)}</strong> 
+                                    <span style="font-weight: bold; color: #ea580c; background: #ffedd5; padding: 3px 10px; border-radius: 12px; font-size: 13px;">${scores?.sectionScores?.[sNum] || 0} / ${scores?.sectionMaxScores?.[sNum] || 0}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
                 </div>
                 
-                <!-- AI RAPOR İÇERİĞİ (Temizlenmiş Markdown) -->
+                <!-- AI RAPOR İÇERİĞİ -->
                 <div style="background-color: #fff7ed; padding: 30px; margin: 0 30px; border-radius: 12px; border: 1px solid #ffedd5;">
                     <div style="font-size: 15px; line-height: 1.7; color: #334155;">
                         ${cleanReport}
                     </div>
                 </div>
                 
-                <!-- DEVASA CTA (YÖNLENDİRME) BÖLÜMÜ -->
+                <!-- SENİN İSTEDİĞİN O EFSANE CTA (AKSYON) BUTONU VE ALANI YENİDEN BURADA -->
                 <div style="padding: 40px 30px; text-align: center; background-color: #ffffff;">
                     <h3 style="font-size: 22px; color: #0f172a; margin-top: 0; margin-bottom: 10px;">Raporunuzun Detayları Hazırlanıyor ⚙️</h3>
                     <p style="font-size: 15px; color: #64748b; line-height: 1.5; margin-bottom: 25px;">Yukarıdaki analiz, sistemin tespit ettiği ilk bulgulardır. Büyüme uzmanımız <strong>Fikret Kara</strong>, verdiğiniz tüm cevapları tek tek inceleyerek size özel <strong>Nihai Büyüme Stratejinizi</strong> oluşturacaktır.</p>
@@ -181,7 +200,7 @@ export const handler = async (event) => {
                     <p style="margin-top: 20px; font-size: 14px; color: #94a3b8;">Verdiğiniz numara üzerinden de sizinle iletişime geçilecektir.</p>
                 </div>
                 
-                <!-- FOOTER / İLETİŞİM -->
+                <!-- LACİVERT ALT BİLGİ (FOOTER) YENİDEN BURADA -->
                 <div style="background-color: #0f172a; color: #94a3b8; padding: 30px; text-align: center; font-size: 13px;">
                     <p style="margin: 0 0 10px 0; font-weight: bold; color: #f8fafc; font-size: 16px;">METRIQ360 BÜYÜME EKİBİ</p>
                     <p style="margin: 5px 0;">📞 +90 537 948 48 68</p>
