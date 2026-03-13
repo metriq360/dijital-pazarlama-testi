@@ -5,55 +5,53 @@ export const handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body);
-    const userInfo = body.userInfo;
-    const score = body.totalScore || 0;
-    const sectionScores = body.sectionScores || {};
-    const sectionMaxScores = body.sectionMaxScores || {};
-    const selectedSections = body.selectedSections || [];
+    const { userInfo, totalScore, answers, allQuestions, selectedSections } = body;
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) throw new Error("GEMINI_API_KEY eksik.");
 
-    const getSectionTitle = (num) => {
-        const titles = ['', 'Sosyal Medya Yönetimi', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'];
-        return titles[num] || '';
-    };
+    // 1. ADIM: MÜŞTERİNİN ZAYIF NOKTALARINI (1 VE 2 PUANLARI) TESPİT ET
+    const failedMetrics = allQuestions
+        .filter(q => answers[q.id] !== undefined && answers[q.id] <= 2)
+        .map(q => `- ${q.text} (Puanı: ${answers[q.id]}/5)`);
 
-    const strongSections = selectedSections.filter(n => (sectionScores[n]/sectionMaxScores[n]) >= 0.7).map(getSectionTitle);
-    const weakSections = selectedSections.filter(n => (sectionScores[n]/sectionMaxScores[n]) < 0.4).map(getSectionTitle);
-    
+    // 2. ADIM: GÜÇLÜ NOKTALARI TESPİT ET
+    const successfulMetrics = allQuestions
+        .filter(q => answers[q.id] !== undefined && answers[q.id] >= 4)
+        .map(q => `- ${q.text}`);
+
     // DİNAMİK KELİME HESABI: 
-    // 1 Bölüm seçildiyse: ~100-150 kelime
-    // 3 Bölüm seçildiyse: ~180-230 kelime
-    // 5 Bölüm seçildiyse: ~250-300 kelime
     const sectionCount = selectedSections.length;
-    const minWords = 100 + (sectionCount - 1) * 35; 
-    const maxWords = Math.min(300, 150 + (sectionCount - 1) * 35);
+    const minWords = 130 + (sectionCount * 25); 
+    const maxWords = 350;
 
     const prompt = `
-      Sen METRIQ360 markasının Baş Stratejisti'sin. 
-      Müşteri Bilgileri: ${userInfo.name} | Sektör: ${userInfo.sector} | Skor: ${score}/100 | Analiz Edilen Alan Sayısı: ${sectionCount}
+      Sen METRIQ360 markasının Baş Büyüme Stratejisti'sin. Karşında bir dijital sağlık testi doldurmuş bir işletme sahibi var.
+      Müşteri Bilgileri: ${userInfo.name} | Sektör: ${userInfo.sector} | Genel Skor: ${totalScore}/100
 
-      GÖREV: Sektörel derinliği olan, doyurucu ve müşterinin harcadığı emeğe (çözdüğü soru sayısına) paralel uzunlukta profesyonel bir analiz yaz.
+      KRİTİK GÖREV: Sadece ve sadece aşağıdaki gerçek verilere dayanarak, sektörel derinliği olan (Örn: Mobilya Showroom, Kuaför randevu trafiği vb.) bir rapor yaz. 
+      KAFANDAN ALAKASIZ TAVSİYE VERME!
 
-      ÖNEMLİ UZUNLUK KURALI: 
-      - Toplam metin uzunluğu KESİNLİKLE en az ${minWords} kelime, en fazla ${maxWords} kelime olmalıdır.
-      - Seçilen alan sayısı (${sectionCount}) arttıkça, analizdeki detay ve madde sayısı da artmalıdır.
+      MÜŞTERİNİN KRİTİK EKSİKLERİ (Bunlar üzerinden vur):
+      ${failedMetrics.join('\n') || 'Genel dijital süreçler.'}
 
-      YAPI:
+      MÜŞTERİNİN İYİ OLDUĞU ALANLAR:
+      ${successfulMetrics.join('\n') || 'Belirgin bir güçlü yön henüz yok.'}
+
+      YAPI (Markdown kullan):
       ### 🎯 ${userInfo.sector} Sektöründe Mevcut Dijital Röntgeniniz
       (Skorun bu sektördeki karşılığını anlatan ferah paragraflar. Skor düşükse tokat gibi gerçekçi, yüksekse vizyoner ol.)
 
       ### ⚠️ Kritik Ciro Kayıpları ve Sızıntılar
-      (Şu zayıf alanlar üzerinden detaylı analiz yap: [${weakSections.join(', ') || 'Dijital süreçler'}]. Neden para kaybedildiğini maddelerle anlat.)
+      (Yukarıdaki "KRİTİK EKSİKLER" listesindeki maddelere tek tek değin. Neden para kaybettiğini sektörel jargonla anlat.)
 
-      ### 💡 Gizli Büyüme Potansiyelleri
-      (Şu güçlü yanlar: [${strongSections.join(', ') || 'Veri odaklı büyüme'}]. Bu alanlar ciroya nasıl kaldıraç olur?)
+      ### 🚀 Stratejik Yol Haritası (İlk 3 Adım)
+      (En düşük puan alan sorunları çözecek 3 net sektörel tavsiye.)
 
-      ### 🚀 İlk 3 Stratejik Hamle
-      (Bugün uygulanacak 3 net ve sektörel tavsiye.)
-
-      KURAL: Asla imza ve selamlama yazma. Sadece rapor içeriğini başlıklarla üret. Markdown kullan. Gereksiz laf kalabalığından kaçın, her cümle bir değer sunsun.
+      KATI KURAL: 
+      - Metin uzunluğu ${minWords}-${maxWords} kelime arası olsun.
+      - Asla imza, selamlama (Merhaba vb.) ekleme. 
+      - Sadece analizi ve başlıkları üret.
     `;
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
@@ -64,7 +62,7 @@ export const handler = async (event) => {
     });
 
     const result = await response.json();
-    const detailedReport = result.candidates?.[0]?.content?.parts?.[0]?.text || "Analiz raporu şu an oluşturulamadı.";
+    const detailedReport = result.candidates?.[0]?.content?.parts?.[0]?.text || "Analiz raporu oluşturulurken bir hata oluştu.";
 
     return { statusCode: 200, body: JSON.stringify({ detailedReport }) };
 
