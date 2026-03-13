@@ -25,20 +25,21 @@ export const handler = async (event) => {
     const prompt = `
       Sen METRIQ360 markasının "Kıdemli Dijital Büyüme Stratejisti"sin. 
       Kullanıcı: ${userInfo.name} ${userInfo.surname} (${userInfo.sector} sektörü)
-      Skor: ${score}/100
-
-      GÖREVİN:
-      Büyüme uzmanımız Fikret Kara'nın müşteriye sunacağı "Birebir Büyüme Analizi" için profesyonel bir ön rapor hazırla.
-      - Raporu "Büyüme Motoru" vizyonuyla yaz.
-      - Müşteri WhatsApp numarasını verdiği için rapor DOYURUCU ve vizyoner olmalı.
-      - Sektörel tavsiyeler ver.
-      - Sonunda Fikret Kara ile randevu almanın kritik olduğunu belirt.
       
-      GÜÇLÜ: ${strongSections.join(', ') || 'Potansiyel vizyon.'}
-      ZAYIF: ${weakSections.join(', ') || 'Dijital süreç optimizasyonu.'}
+      GÖREVİN:
+      Kullanıcıya mevcut dijital durumunu anlatan vizyoner bir strateji ön metni yaz. (Maksimum 3 paragraf).
+
+      KATI YASAKLAR:
+      - ASLA başlık atma.
+      - ASLA selamlama (Merhaba vb.) yapma.
+      - ASLA imza (Saygılarımla vb.) ekleme.
+      - Sadece analizi yaz.
+
+      İÇERİK KILAVUZU:
+      1. Güçlü Yönleri: ${strongSections.join(', ') || 'Dijital potansiyel.'}
+      2. Gelişim Alanları: ${weakSections.join(', ') || 'Süreç optimizasyonu.'}
     `;
 
-    // SENİN LİSTENDEN SEÇİLEN GÜNCEL MODEL: gemini-2.5-flash
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
     
     const response = await fetch(geminiUrl, {
@@ -48,12 +49,9 @@ export const handler = async (event) => {
     });
 
     const result = await response.json();
-    const detailedReport = result.candidates?.[0]?.content?.parts?.[0]?.text || "Rapor ekibimiz tarafından hazırlanıyor.";
+    const detailedReport = result.candidates?.[0]?.content?.parts?.[0]?.text || "Strateji ekibimiz verilerinizi inceliyor...";
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ detailedReport }),
-    };
+    return { statusCode: 200, body: JSON.stringify({ detailedReport }) };
 
   } catch (error) {
     return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
