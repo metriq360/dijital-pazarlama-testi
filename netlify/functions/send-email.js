@@ -1,74 +1,70 @@
 import nodemailer from 'nodemailer';
 
-// Tüm Sorular (Admin mailinde cevapları listelemek için)
+// Admin maili için soru listesi
 const allQuestions = [
-  { id: 'q1_1', section: 1, text: 'Sosyal medya hesaplarınızda ne sıklıkla paylaşım yapıyorsunuz?' },
-  { id: 'q1_2', section: 1, text: 'Her platform için ayrı bir strateji uyguluyor musunuz?' },
-  { id: 'q1_3', section: 1, text: 'Takipçi sayınız son 6 ayda istikrarlı bir şekilde arttı mı?' },
-  { id: 'q1_4', section: 1, text: 'Paylaşımlarınız etkileşim alıyor mu (beğeni, yorum, paylaşım)?' },
-  { id: 'q1_5', section: 1, text: 'Hedef kitlenizi tanıyarak içerik üretiyor musunuz?' },
-  { id: 'q1_6', section: 1, text: 'Story, reels ve canlı yayın gibi farklı içerik formatlarını kullanıyor musunuz?' },
-  { id: 'q1_7', section: 1, text: 'Sosyal medyada gelen yorumlara ve mesajlara ne kadar hızlı yanıt veriyorsunuz?' },
-  { id: 'q1_8', section: 1, text: 'İçerik takvimi oluşturup gönderileri önceden planlıyor musunuz?' },
-  { id: 'q1_9', section: 1, text: 'Rakiplerinizin sosyal medya stratejilerini analiz ediyor musunuz?' },
-  { id: 'q1_10', section: 1, text: 'Sosyal medya için dış kaynak ya da ajans desteği alıyor musunuz?' },
-  { id: 'q2_1', section: 2, text: 'Google Benim İşletmem (GBP) profiliniz var mı?' },
-  { id: 'q2_2', section: 2, text: 'GBP profilinizde adres, telefon ve açık saatler eksiksiz mi?' },
-  { id: 'q2_3', section: 2, text: 'GBP üzerinde sık sık içerik (fotoğraf, gönderi) paylaşıyor musunuz?' },
-  { id: 'q2_4', section: 2, text: 'Harita konumunuz doğru mu?' },
-  { id: 'q2_5', section: 2, text: 'Müşterilerden düzenli olarak Google yorumu alıyor musunuz?' },
-  { id: 'q2_6', section: 2, text: 'Gelen yorumlara yanıt veriyor musunuz?' },
-  { id: 'q2_7', section: 2, text: 'İşletmeniz yerel dizinlerde ve haritalarda listelenmiş mi?' },
-  { id: 'q2_8', section: 2, text: '“Yakınımdaki [ürün/hizmet]” gibi aramalarda çıkıyor musunuz?' },
-  { id: 'q2_9', section: 2, text: 'GBP verilerini (gösterim, tıklama vs.) analiz ediyor musunuz?' },
-  { id: 'q2_10', section: 2, text: 'Yerel anahtar kelimelere yönelik stratejiniz var mı?' },
-  { id: 'q3_1', section: 3, text: 'Meta (Facebook/Instagram) reklamları yürütüyor musunuz?' },
-  { id: 'q3_2', section: 3, text: 'Google Ads kampanyaları aktif mi?' },
-  { id: 'q3_3', section: 3, text: 'Hedef kitle tanımlarınız net mi?' },
-  { id: 'q3_4', section: 3, text: 'Reklam kampanyalarınıza segmentlere ayırıyor musunuz?' },
-  { id: 'q3_5', section: 3, text: 'A/B testleri yapıyor musunuz?' },
-  { id: 'q3_6', section: 3, text: 'Reklamlarda dönüşüm hedefi belirliyor musunuz?' },
-  { id: 'q3_7', section: 3, text: 'Reklam bütçenizi veriye göre optimize ediyor musunuz?' },
-  { id: 'q3_8', section: 3, text: 'Farklı reklam formatları (video, carousel, lead form) kullanıyor musunuz?' },
-  { id: 'q3_9', section: 3, text: 'Dönüşüm takibi yapabiliyor musunuz (pixel, GA)?' },
-  { id: 'q3_10', section: 3, text: 'Reklam performans raporlarını haftalık/aylık inceliyor musunuz?' },
-  { id: 'q4_1', section: 4, text: 'Web sitenizde blog içerikleri yayınlıyor musunuz?' },
-  { id: 'q4_2', section: 4, text: 'İçerikleriniz belirli bir stratejiye göre mı hazırlanıyor?' },
-  { id: 'q4_3', section: 4, text: 'İçeriklerinizin hedef kitlenizin sorunlarına çözüm sunduğunu düşünüyor musunuz?' },
-  { id: 'q4_4', section: 4, text: 'Videolu içerikler üretiyor musunuz?' },
-  { id: 'q4_5', section: 4, text: 'İçeriklerinizde anahtar kelime optimizasyonu yapıyor musunuz?' },
-  { id: 'q4_6', section: 4, text: 'İçerikleriniz ne sıklıkta güncelleniyor?' },
-  { id: 'q4_7', section: 4, text: 'İçeriğiniz sosyal medya ve e-posta ile destekleniyor mu?' },
-  { id: 'q4_8', section: 4, text: 'İçeriklerinizin performansını ölçüyor musunuz (okunma süresi, hemen çıkma vs.)?' },
-  { id: 'q4_9', section: 4, text: 'Blog yazılarında görsel, infografik gibi unsurlar kullanıyor musunuz?' },
-  { id: 'q4_10', section: 4, text: 'İçerik üretimi için profesyonel destek alıyor musunuz?' },
-  { id: 'q5_1', section: 5, text: 'Hangi pazarlama otomasyon araçlarını kullanıyorsunuz?' },
-  { id: 'q5_2', section: 5, text: 'E-posta pazarlaması yapıyor musunuz?' },
-  { id: 'q5_3', section: 5, text: 'E-posta listenizi segmentlere ayırıyor musunuz?' },
-  { id: 'q5_4', section: 5, text: 'Google Analytics veya benzeri araçlarla sitenizi analiz ediyor musunuz?' },
-  { id: 'q5_5', section: 5, text: 'Ziyaretçi davranışlarını analiz etmek için bir sisteminiz var mı?' },
-  { id: 'q5_6', section: 5, text: 'Sosyal medya zamanlayıcı araçlar (Buffer, Meta Planner vb.) kullanıyor musunuz?' },
-  { id: 'q5_7', section: 5, text: 'CRM veya müşteri yönetim sistemi kullanıyor musunuz?' },
-  { id: 'q5_8', section: 5, text: 'Pazarlama performansınızı raporlayan otomatik sistemler var mı?' },
-  { id: 'q5_9', section: 5, text: 'Online formlarınızdan gelen verileri merkezi bir yerde topluyor musunuz?' },
-  { id: 'q5_10', section: 5, text: 'Dijital pazarlama süreçlerinin tümünü bir sistem dahilinde takip ediyor musunuz?' }
+  { id: 'q1_1', section: 1, text: 'Sosyal medya paylaşım sıklığı' },
+  { id: 'q1_2', section: 1, text: 'Platform bazlı strateji' },
+  { id: 'q1_3', section: 1, text: 'Takipçi artış hızı' },
+  { id: 'q1_4', section: 1, text: 'Etkileşim oranı' },
+  { id: 'q1_5', section: 1, text: 'Hedef kitle tanımı' },
+  { id: 'q1_6', section: 1, text: 'İçerik format çeşitliliği' },
+  { id: 'q1_7', section: 1, text: 'Yanıt hızı' },
+  { id: 'q1_8', section: 1, text: 'İçerik takvimi kullanımı' },
+  { id: 'q1_9', section: 1, text: 'Rakip analizi' },
+  { id: 'q1_10', section: 1, text: 'Dış kaynak desteği' },
+  { id: 'q2_1', section: 2, text: 'GBP profil varlığı' },
+  { id: 'q2_2', section: 2, text: 'GBP bilgi tamlığı' },
+  { id: 'q2_3', section: 2, text: 'GBP içerik sıklığı' },
+  { id: 'q2_4', section: 2, text: 'Harita konumu doğruluğu' },
+  { id: 'q2_5', section: 2, text: 'Google yorum düzeni' },
+  { id: 'q2_6', section: 2, text: 'Yorum yanıtlama' },
+  { id: 'q2_7', section: 2, text: 'Yerel dizin kaydı' },
+  { id: 'q2_8', section: 2, text: 'Yerel arama görünürlüğü' },
+  { id: 'q2_9', section: 2, text: 'GBP veri analizi' },
+  { id: 'q2_10', section: 2, text: 'Yerel SEO stratejisi' },
+  { id: 'q3_1', section: 3, text: 'Meta reklamları' },
+  { id: 'q3_2', section: 3, text: 'Google Ads aktifliği' },
+  { id: 'q3_3', section: 3, text: 'Hedef kitle netliği' },
+  { id: 'q3_4', section: 3, text: 'Reklam segmentasyonu' },
+  { id: 'q3_5', section: 3, text: 'A/B testleri' },
+  { id: 'q3_6', section: 3, text: 'Dönüşüm hedefi' },
+  { id: 'q3_7', section: 3, text: 'Bütçe optimizasyonu' },
+  { id: 'q3_8', section: 3, text: 'Reklam format çeşitliliği' },
+  { id: 'q3_9', section: 3, text: 'Dönüşüm takibi (Pixel/GA)' },
+  { id: 'q3_10', section: 3, text: 'Haftalık raporlama' },
+  { id: 'q4_1', section: 4, text: 'Blog içerik yayını' },
+  { id: 'q4_2', section: 4, text: 'İçerik stratejisi' },
+  { id: 'q4_3', section: 4, text: 'Sorun çözme odaklılık' },
+  { id: 'q4_4', section: 4, text: 'Video içerik üretimi' },
+  { id: 'q4_5', section: 4, text: 'SEO uyumlu içerik' },
+  { id: 'q4_6', section: 4, text: 'İçerik güncelliği' },
+  { id: 'q4_7', section: 4, text: 'Çok kanallı destek' },
+  { id: 'q4_8', section: 4, text: 'İçerik performans ölçümü' },
+  { id: 'q4_9', section: 4, text: 'Görsel/İnfografik kullanımı' },
+  { id: 'q4_10', section: 4, text: 'Profesyonel destek' },
+  { id: 'q5_1', section: 5, text: 'Pazarlama araçları' },
+  { id: 'q5_2', section: 5, text: 'E-posta pazarlaması' },
+  { id: 'q5_3', section: 5, text: 'E-posta segmentasyonu' },
+  { id: 'q5_4', section: 5, text: 'GA4 analizi' },
+  { id: 'q5_5', section: 5, text: 'Ziyaretçi analizi' },
+  { id: 'q5_6', section: 5, text: 'Sosyal medya otomasyonu' },
+  { id: 'q5_7', section: 5, text: 'CRM kullanımı' },
+  { id: 'q5_8', section: 5, text: 'Otomatik raporlama' },
+  { id: 'q5_9', section: 5, text: 'Merkezi veri toplama' },
+  { id: 'q5_10', section: 5, text: 'Bütünleşik sistem takibi' }
 ];
 
-// Markdown Temizleyici (Şık Liste Tasarımı)
 const cleanMarkdownForEmail = (text) => {
     if (!text) return "Rapor hazırlanıyor...";
     return text
-        .replace(/^\s*###\s+(.*)/gm, '<h3 style="color:#ea580c; font-size:18px; margin-top:25px; margin-bottom:15px; border-bottom:2px solid #fdba74; padding-bottom:8px; font-weight:800; letter-spacing:0.5px;">$1</h3>')
-        .replace(/^\s*##\s+(.*)/gm, '<h2 style="color:#c2410c; font-size:22px; margin-top:20px;">$1</h2>')
-        .replace(/^\s*#\s+(.*)/gm, '<h1 style="color:#9a3412; font-size:26px;">$1</h1>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#0f172a; font-weight:800;">$1</strong>')
-        .replace(/^\s*[-*]\s+(.*)/gm, '<li style="margin-bottom:12px; color:#334155; line-height:1.6; padding-left:5px;"><span style="color:#ea580c; font-weight:bold;">•</span> $1</li>')
-        .replace(/\*(.*?)\*/g, '<em style="color:#475569;">$1</em>')
+        .replace(/^\s*###\s+(.*)/gm, '<h3 style="color:#ea580c; font-size:17px; margin:20px 0 10px 0; border-bottom:1px solid #fdba74; padding-bottom:5px; font-weight:bold;">$1</h3>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#1e293b;">$1</strong>')
+        .replace(/^\s*[-*]\s+(.*)/gm, '<div style="margin-bottom:8px; color:#334155;"><span style="color:#ea580c;">•</span> $1</div>')
         .replace(/\n/g, '<br>');
 };
 
 const getSectionTitle = (num) => {
-    const titles = ['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'];
+    const titles = ['', 'Sosyal Medya', 'Yerel SEO', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'];
     return titles[num] || '';
 };
 
@@ -77,7 +73,6 @@ export const handler = async (event) => {
 
   try {
     const { userInfo, report, scores, answers, selectedSections } = JSON.parse(event.body);
-
     const transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST,
       port: 587,
@@ -87,119 +82,72 @@ export const handler = async (event) => {
 
     const cleanReport = cleanMarkdownForEmail(report);
 
-    // ADMİNE GİDEN CEVAP LİSTESİ (Tablo formatında)
-    let detailsHTML = `<h2 style="color:#d32f2f;">Müşterinin Test Cevapları:</h2>`;
-    if (selectedSections && answers) {
-        selectedSections.forEach(sNum => {
-            const sScore = scores?.sectionScores?.[sNum] || 0;
-            const sMax = scores?.sectionMaxScores?.[sNum] || 0;
-            detailsHTML += `<div style="margin-top:20px; border-bottom:2px solid #f97316; padding-bottom:5px;">
-                <b style="color:#f97316; font-size:18px;">${getSectionTitle(sNum)}</b> (${sScore} / ${sMax})
-            </div><ul style="list-style:none; padding-left:0;">`;
-            
-            allQuestions.filter(q => q.section === sNum).forEach(q => {
-                const val = answers[q.id] || 'Boş';
-                detailsHTML += `<li style="margin-bottom:10px; border-left:4px solid #eee; padding-left:10px;">
-                    <span style="color:#555; font-size:14px;">${q.text}</span><br>
-                    <b style="color:#111;">Cevap: ${val} / 5</b>
-                </li>`;
-            });
-            detailsHTML += `</ul>`;
-        });
-    }
-
-    // --- 1. SANA (ADMİNE) GELEN MAİL ---
+    // 1. SANA (ADMİNE) GELEN MAİL
     const mailToAdmin = {
-      from: `"Metriq360 Funnel" <${process.env.EMAIL_USER}>`,
+      from: `"Lead Alert" <${process.env.EMAIL_USER}>`,
       to: process.env.ADMIN_EMAIL,
-      subject: `🚨 YENİ LEAD: ${userInfo.name} ${userInfo.surname} (${userInfo.sector})`,
-      html: `
-        <div style="font-family: sans-serif; color: #333; max-width: 600px;">
-            <h1 style="color: #d32f2f;">Yeni Kayıt!</h1>
-            <div style="background: #f9f9f9; padding: 20px; border-radius: 15px; border: 1px solid #eee;">
-                <p><b>Ad Soyad:</b> ${userInfo.name} ${userInfo.surname}</p>
-                <p><b>Sektör:</b> ${userInfo.sector}</p>
-                <p><b>E-posta:</b> ${userInfo.email}</p>
-                <div style="background: #e3f2fd; padding: 15px; border-radius: 10px; margin-top: 15px;">
-                    <p style="font-size: 24px; color: #0277bd; margin: 0;"><b>📞 WhatsApp: ${userInfo.whatsapp}</b></p>
-                </div>
-                <hr style="margin: 20px 0;">
-                <p style="font-size: 18px;"><b>Genel Skor:</b> %${scores?.totalScore || 0}</p>
-            </div>
-            <div style="margin-top: 30px;">${detailsHTML}</div>
-            <h2 style="margin-top: 30px; color: #d32f2f;">AI Ön Raporu:</h2>
-            <div style="background: #fff7ed; padding: 20px; border-radius: 10px; border: 1px solid #ffedd5;">${cleanReport}</div>
-        </div>
-      `,
+      subject: `🔥 YENİ KAYIT: ${userInfo.name}`,
+      html: `<p><b>WhatsApp: ${userInfo.whatsapp}</b></p><p>Skor: %${scores?.totalScore}</p><hr>${cleanReport}`
     };
 
-    // --- 2. MÜŞTERİYE GİDEN PREMIUM MAİL (GÖRSELDEKİ BİREBİR TASARIM) ---
+    // 2. MÜŞTERİYE GİDEN PREMİUM VE UYARI NOTLU MAİL
     const mailToUser = {
-        from: `"Metriq360 Strateji" <${process.env.EMAIL_USER}>`,
+        from: `"Metriq360" <${process.env.EMAIL_USER}>`,
         to: userInfo.email,
-        subject: `Metriq360: Dijital Sağlık Analizi Ön Raporunuz`,
+        subject: `Dijital Sağlık Analizi Raporunuz Hazır!`,
         html: `
-            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 650px; margin: 0 auto; color: #1e293b; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                
-                <!-- LOGO/HEADER -->
-                <div style="background-color: #f8fafc; padding: 30px 20px; text-align: center; border-bottom: 1px solid #e2e8f0;">
-                    <h1 style="margin: 0; font-size: 32px; font-weight: 900; letter-spacing: -1px; color: #0f172a;">METR<span style="color: #ea580c;">IQ</span>360</h1>
-                    <p style="margin: 8px 0 0 0; font-size: 12px; font-weight: 700; letter-spacing: 3px; color: #64748b; text-transform: uppercase;">Stratejik Büyüme Laboratuvarı</p>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+                <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-bottom: 1px solid #e2e8f0;">
+                    <h1 style="margin: 0; font-size: 24px; color: #0f172a;">METR<span style="color: #ea580c;">IQ</span>360</h1>
+                    <p style="margin: 5px 0 0 0; font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 2px;">Büyüme Laboratuvarı</p>
                 </div>
                 
-                <!-- GİRİŞ -->
-                <div style="padding: 30px 30px 10px 30px;">
-                    <h2 style="font-size: 20px; color: #0f172a; margin-top: 0;">Merhaba Sayın ${userInfo.name} ${userInfo.surname},</h2>
-                    <p style="font-size: 15px; line-height: 1.6; color: #475569;">Dijital Pazarlama Sağlık Testi verileriniz yapay zeka altyapımız tarafından analiz edildi. Aşağıda <b>detaylı skor dökümünüzü</b> ve dijital varlıklarınızın genel röntgenini bulabilirsiniz.</p>
-                </div>
+                <div style="padding: 20px;">
+                    <h2 style="font-size: 18px; color: #0f172a;">Merhaba ${userInfo.name},</h2>
+                    <p style="font-size: 14px; line-height: 1.5; color: #475569;">Dijital Pazarlama Sağlık Testi sonuçlarınız aşağıdadır:</p>
 
-                <!-- SKOR TABLOSU -->
-                <div style="background-color: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 25px; margin: 0 30px 20px 30px; text-align: center;">
-                    <h3 style="color: #64748b; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; margin-top: 0; margin-bottom: 10px;">Genel Dijital Sağlık Puanınız</h3>
-                    <div style="font-size: 48px; font-weight: 900; color: ${scores?.totalScore < 50 ? '#dc2626' : (scores?.totalScore < 75 ? '#ea580c' : '#16a34a')}; margin: 0;">
-                        ${scores?.totalScore || 0} <span style="font-size: 20px; color: #94a3b8;">/ 100</span>
-                    </div>
-                    <div style="text-align: left; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-                        <h4 style="color: #0f172a; font-size: 15px; margin-top: 0; margin-bottom: 15px;">📊 Kategori Bazlı Skorlarınız:</h4>
-                        <ul style="list-style: none; padding: 0; margin: 0;">
+                    <!-- SKOR TABLOSU -->
+                    <div style="background-color: #f1f5f9; border-radius: 8px; padding: 15px; margin-bottom: 20px; text-align: center;">
+                        <span style="font-size: 12px; color: #64748b; text-transform: uppercase;">Genel Skor</span>
+                        <div style="font-size: 36px; font-weight: 900; color: #ea580c;">${scores?.totalScore || 0} / 100</div>
+                        <div style="text-align: left; margin-top: 15px; font-size: 13px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
                             ${(selectedSections || []).map(sNum => `
-                                <li style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #334155; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px;">
-                                    <strong>${getSectionTitle(sNum)}</strong> 
-                                    <span style="font-weight: bold; color: #ea580c; background: #ffedd5; padding: 3px 10px; border-radius: 12px; font-size: 13px;">${scores?.sectionScores?.[sNum] || 0} / ${scores?.sectionMaxScores?.[sNum] || 0}</span>
-                                </li>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                    <span>${getSectionTitle(sNum)}:</span>
+                                    <b>${scores?.sectionScores?.[sNum] || 0} / ${scores?.sectionMaxScores?.[sNum] || 0}</b>
+                                </div>
                             `).join('')}
-                        </ul>
+                        </div>
                     </div>
-                </div>
-                
-                <!-- AI RAPORU -->
-                <div style="background-color: #fff7ed; padding: 30px; margin: 0 30px; border-radius: 12px; border: 1px solid #ffedd5;">
-                    <div style="font-size: 15px; line-height: 1.7; color: #334155;">
+
+                    <!-- ANALİZ -->
+                    <div style="font-size: 14px; line-height: 1.6;">
                         ${cleanReport}
                     </div>
-                </div>
-                
-                <!-- GÖRSELDEKİ BİREBİR CTA ALANI -->
-                <div style="padding: 40px 30px; text-align: center; background-color: #ffffff;">
-                    <h2 style="font-size: 26px; font-weight: 800; color: #0f172a; margin-top: 0; margin-bottom: 15px;">Raporunuzun Detayları Hazırlanıyor ⚙️</h2>
-                    <p style="font-size: 16px; color: #475569; line-height: 1.6; margin-bottom: 30px; padding: 0 10px;">Yukarıdaki analiz, sistemin tespit ettiği ilk bulgulardır. Büyüme uzmanımız <strong>Fikret Kara</strong>, verdiğiniz tüm cevapları tek tek inceleyerek size özel <strong>Nihai Büyüme Stratejinizi</strong> oluşturacaktır.</p>
-                    
-                    <a href="https://wa.me/905379484868?text=Merhaba, Dijital Sağlık Analizimi tamamladım. Fikret Bey ile strateji görüşmesi planlamak istiyorum." 
-                       style="display: inline-block; background-color: #f15a22; color: #ffffff; font-size: 18px; font-weight: 900; text-decoration: none; padding: 22px 45px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 10px 20px -5px rgba(241, 90, 34, 0.4);">
-                       WHATSAPP'TAN UZMANA BAĞLAN
-                    </a>
-                    
-                    <p style="margin-top: 25px; font-size: 14px; color: #94a3b8; font-weight: 500;">Verdiğiniz numara üzerinden de sizinle iletişime geçilecektir.</p>
-                </div>
-                
-                <!-- GÖRSELDEKİ LACİVERT FOOTER -->
-                <div style="background-color: #121926; color: #ffffff; padding: 40px 30px; text-align: center;">
-                    <p style="margin: 0 0 15px 0; font-weight: 800; letter-spacing: 1px; font-size: 16px; text-transform: uppercase;">METRIQ360 BÜYÜME EKİBİ</p>
-                    <div style="margin-top: 15px;">
-                        <p style="margin: 8px 0; font-size: 14px;">📞 +90 537 948 48 68</p>
-                        <p style="margin: 8px 0; font-size: 14px;">✉️ <a href="mailto:bilgi@metriq360.tr" style="color: #ffffff; text-decoration: none;">bilgi@metriq360.tr</a></p>
-                        <p style="margin: 8px 0; font-size: 14px;">🌐 <a href="https://www.metriq360.tr" style="color: #ffffff; text-decoration: none;">www.metriq360.tr</a></p>
+
+                    <!-- CTA VE KRİTİK UYARI NOTU -->
+                    <div style="margin-top: 30px; padding: 25px; background-color: #fff; border: 2px solid #ea580c; border-radius: 12px; text-align: center;">
+                        <h3 style="margin-top: 0; color: #0f172a;">Stratejiniz Hazırlanıyor ⚙️</h3>
+                        <p style="font-size: 13px; color: #475569;">Büyüme uzmanımız <strong>Fikret Kara</strong>, bu verileri inceleyip size özel yol haritasıyla birlikte <strong>WhatsApp</strong> üzerinden ulaşacaktır.</p>
+                        
+                        <a href="https://wa.me/905379484868?text=Merhaba, Dijital Sağlık Analizimi tamamladım. Randevu almak istiyorum." 
+                           style="display: inline-block; background-color: #ea580c; color: #ffffff; padding: 15px 30px; border-radius: 50px; text-decoration: none; font-weight: bold; font-size: 14px; text-transform: uppercase; margin-top: 10px; margin-bottom: 15px;">
+                           WhatsApp'tan Uzmana Bağlan
+                        </a>
+
+                        <!-- İSTEDİĞİN O KRİTİK UYARI CÜMLESİ -->
+                        <div style="padding-top: 15px; border-top: 1px dashed #fdba74; margin-top: 10px;">
+                            <p style="font-size: 12px; color: #ea580c; font-weight: bold; font-style: italic; margin: 0;">
+                                ⚠️ Detaylı raporunuz Metriq360 ekibi tarafından hazırlanıyor ve en kısa sürede size gönderilecektir.
+                            </p>
+                        </div>
                     </div>
+                </div>
+
+                <!-- FOOTER -->
+                <div style="background-color: #0f172a; color: #94a3b8; padding: 20px; text-align: center; font-size: 12px;">
+                    <strong style="color: #fff; display: block; margin-bottom: 10px;">METRIQ360 BÜYÜME EKİBİ</strong>
+                    📞 +90 537 948 48 68 | ✉️ bilgi@metriq360.tr
                 </div>
             </div>
         `,
@@ -210,7 +158,6 @@ export const handler = async (event) => {
 
     return { statusCode: 200, body: JSON.stringify({ message: 'Success' }) };
   } catch (error) {
-    console.error("Mail Error:", error);
     return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
   }
 };
