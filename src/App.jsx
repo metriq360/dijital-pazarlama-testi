@@ -72,7 +72,10 @@ function App() {
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // YENİ: Bekleme animasyonu için state
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [loadingText, setLoadingText] = useState('SONUÇLARI VE RAPORU GÖNDER');
 
   useEffect(() => {
     const branding = () => {
@@ -101,6 +104,32 @@ function App() {
     };
     initFirebase();
   }, []);
+
+  // PSİKOLOJİK BEKLEME ANİMASYONU (Sırayla değişen yazılar)
+  useEffect(() => {
+    let interval;
+    if (submitLoading) {
+      const steps = [
+        "Verileriniz Şifreleniyor 🔒", 
+        "Yapay Zeka Analiz Ediyor 🧠", 
+        "Raporunuz Hazırlanıyor 📝", 
+        "E-postalar İletiliyor 📧", 
+        "Yönlendiriliyorsunuz 🚀"
+      ];
+      let stepIndex = 0;
+      setLoadingText(steps[0]);
+      
+      interval = setInterval(() => {
+        stepIndex++;
+        if (stepIndex < steps.length) {
+          setLoadingText(steps[stepIndex]);
+        }
+      }, 1000); // Her saniyede bir yazı değişecek
+    } else {
+      setLoadingText('SONUÇLARI VE RAPORU GÖNDER');
+    }
+    return () => clearInterval(interval);
+  }, [submitLoading]);
 
   const getSectionTitle = (num) => {
     const titles = ['', 'Sosyal Medya', 'Yerel SEO & GBP', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'];
@@ -157,7 +186,6 @@ function App() {
     try {
       const baseUrl = window.location.origin === 'null' ? 'https://www.metriq360.com.tr' : window.location.origin;
       
-      // 1. YAPAY ZEKA RAPORUNU ARKA PLANDA ÜRET
       let generatedReport = "Sistem yoğunluğu nedeniyle raporunuz uzmanımız tarafından hazırlanıp iletilecektir.";
       try {
         const reportRes = await fetch(`${baseUrl}/.netlify/functions/generate-report`, {
@@ -178,7 +206,6 @@ function App() {
         }
       } catch(aiError) { console.log("AI çalışmadı, standart metne geçildi."); }
 
-      // 2. MAİL GÖNDERİMİ (SANA VE MÜŞTERİYE KUSURSUZ GİDECEK)
       const emailRes = await fetch(`${baseUrl}/.netlify/functions/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -196,7 +223,6 @@ function App() {
           throw new Error(`Mail servisi hatası: ${errText}`);
       }
 
-      // 3. FİREBASE YEDEKLEME
       try {
         if (db && userId) {
             await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'leads'), {
@@ -205,7 +231,6 @@ function App() {
         }
       } catch(fbErr) {}
 
-      // 4. BAŞARILI, TEŞEKKÜRLER SAYFASINA GİT
       window.location.href = "https://www.metriq360.tr/tesekkurler-test";
 
     } catch (err) {
@@ -241,7 +266,7 @@ function App() {
           <form onSubmit={handleUserFormSubmit} className="space-y-5 text-left">
             <input type="text" placeholder="Adınız" value={user.name} onChange={(e)=>setUser({...user, name: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 outline-none text-lg font-medium" required />
             <input type="text" placeholder="Soyadınız" value={user.surname} onChange={(e)=>setUser({...user, surname: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 outline-none text-lg font-medium" required />
-            <input type="text" placeholder="Sektörünüz" value={user.sector} onChange={(e)=>setUser({...user, sector: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 outline-none text-lg font-medium" required />
+            <input type="text" placeholder="Sektörünüz (Örn: Kuaför, Mobilya)" value={user.sector} onChange={(e)=>setUser({...user, sector: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 outline-none text-lg font-medium" required />
             <input type="email" placeholder="E-posta Adresiniz" value={user.email} onChange={(e)=>setUser({...user, email: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-orange-500 outline-none text-lg font-medium" required />
             <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-6 rounded-[1.5rem] shadow-xl uppercase tracking-widest transition-transform hover:-translate-y-1">DİJİTAL SAĞLIK TESTİNİ BAŞLAT</button>
           </form>
@@ -312,10 +337,23 @@ function App() {
 
             <form onSubmit={finalSubmit} className="space-y-5 text-left mt-8">
                 <div className="ml-2"><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1">WhatsApp Numaranız</label></div>
-                <input type="tel" placeholder="Örn: 0532 123 45 67" value={user.whatsapp} onChange={(e)=>setUser({...user, whatsapp: e.target.value})} className="w-full px-8 py-6 rounded-[1.5rem] border border-slate-200 bg-white focus:ring-4 focus:ring-orange-500 outline-none transition text-xl font-black placeholder:text-slate-300 shadow-sm" required />
-                <button type="submit" disabled={submitLoading} className={`w-full ${submitLoading ? 'bg-slate-400' : 'bg-orange-600 hover:bg-orange-700'} text-white font-black py-6 rounded-[1.75rem] shadow-2xl uppercase tracking-widest text-sm md:text-base transition-all`}>
-                    {submitLoading ? 'RAPORLAR GÖNDERİLİYOR...' : 'SONUÇLARI VE RAPORU GÖNDER'}
+                <input type="tel" placeholder="Örn: 0532 123 45 67" value={user.whatsapp} onChange={(e)=>setUser({...user, whatsapp: e.target.value})} disabled={submitLoading} className="w-full px-8 py-6 rounded-[1.5rem] border border-slate-200 bg-white focus:ring-4 focus:ring-orange-500 outline-none transition text-xl font-black placeholder:text-slate-300 shadow-sm disabled:opacity-50" required />
+                
+                {/* GÜNCELLENMİŞ ANİMASYONLU BUTON */}
+                <button 
+                    type="submit" 
+                    disabled={submitLoading} 
+                    className={`w-full flex items-center justify-center gap-3 text-white font-black py-6 rounded-[1.75rem] shadow-2xl uppercase tracking-widest text-sm md:text-base transition-all ${submitLoading ? 'bg-slate-700 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700 transform hover:scale-105 active:scale-95'}`}
+                >
+                    {submitLoading && (
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    )}
+                    {loadingText}
                 </button>
+
             </form>
           </div>
         )}
