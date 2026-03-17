@@ -7,7 +7,6 @@ const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-// --- BURASI MÜHÜRLENDİ: YENİ TEŞEKKÜRLER SAYFASI LİNKİNİZ ---
 const THANK_YOU_PAGE_URL = "https://www.metriq360.tr/saglik-testi-tesekkur"; 
 
 const allQuestions = [
@@ -73,8 +72,9 @@ function App() {
   const [normalizedScore, setNormalizedScore] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
-  const [loadingText, setLoadingText] = useState('SONUÇLARI VE RAPORU GÖNDER');
+  const [loadingText, setLoadingText] = useState('ANALİZİ TAMAMLA VE RAPORU AL');
   const [error, setError] = useState('');
+  const [inputError, setInputError] = useState(false);
 
   useEffect(() => {
     const branding = () => {
@@ -84,7 +84,7 @@ function App() {
       document.getElementsByTagName('head')[0].appendChild(link);
     };
     branding();
-    
+
     const initFirebase = async () => {
       if (!firebaseConfigStr) { setLoading(false); return; }
       try {
@@ -93,7 +93,6 @@ function App() {
         const auth = getAuth(app);
         const dbInstance = getFirestore(app);
         setDb(dbInstance);
-
         const doAuth = async () => {
           if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
           else await signInAnonymously(auth);
@@ -111,17 +110,12 @@ function App() {
   useEffect(() => {
     let interval;
     if (submitLoading) {
-      const steps = ["Veriler Şifreleniyor 🔒", "Analiz Yapılıyor 🧠", "Rapor Hazırlanıyor 📝", "Yönlendiriliyorsunuz 🚀"];
+      const steps = ["Raporunuz Hazırlanıyor 🧠", "Veriler Şifreleniyor 🔒", "E-posta Gönderiliyor 📧", "Yönlendiriliyorsunuz 🚀"];
       let idx = 0; setLoadingText(steps[0]);
       interval = setInterval(() => { idx++; if (idx < steps.length) setLoadingText(steps[idx]); }, 1000);
-    } else { setLoadingText('SONUÇLARI VE RAPORU GÖNDER'); }
+    } else { setLoadingText('ANALİZİ TAMAMLA VE RAPORU AL'); }
     return () => clearInterval(interval);
   }, [submitLoading]);
-
-  const getSectionTitle = (num) => {
-    const titles = ['', 'Sosyal Medya', 'Yerel SEO', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'];
-    return titles[num] || '';
-  };
 
   const calculateScore = () => {
     let total = 0; let max = 0; const sScores = {}; const sMax = {};
@@ -136,14 +130,17 @@ function App() {
 
   const finalSubmit = async (e) => {
     e.preventDefault();
-    if (!user.whatsapp) { setError("WhatsApp numaranızı girin."); return; }
+    if (!user.whatsapp || user.whatsapp.length < 10) { 
+        setError("Lütfen geçerli bir WhatsApp numarası girin."); 
+        setInputError(true);
+        setTimeout(() => setInputError(false), 1000);
+        return; 
+    }
     setSubmitLoading(true);
     const result = calculateScore();
 
     try {
       const baseUrl = window.location.origin === 'null' ? '' : window.location.origin;
-      
-      // 1. VERİ ODAKLI AI ANALİZİ
       let reportText = "Analiz uzmanımız tarafından hazırlanacaktır.";
       try {
         const res = await fetch(`${baseUrl}/.netlify/functions/generate-report`, {
@@ -154,31 +151,24 @@ function App() {
         if (res.ok) { const data = await res.json(); reportText = data.detailedReport; }
       } catch(e) {}
 
-      // 2. MAİL GÖNDERİMİ
       await fetch(`${baseUrl}/.netlify/functions/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userInfo: user, report: reportText, scores: { totalScore: result.norm, sectionScores: result.sScores, sectionMaxScores: result.sMax }, answers, selectedSections }),
       });
 
-      // 3. FIRESTORE YEDEKLEME (MÜHÜRLENDİ!)
       if (db && userId) {
         try {
           await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'leads'), {
-            timestamp: new Date(),
-            ...user,
-            score: result.norm,
-            answers,
-            report: reportText
+            timestamp: new Date(), ...user, score: result.norm, answers, report: reportText
           });
-        } catch (fbErr) { console.error("DB Hatası:", fbErr); }
+        } catch (fbErr) {}
       }
 
-      // 4. KESİN YÖNLENDİRME (MÜHÜRLENDİ!)
       window.location.href = THANK_YOU_PAGE_URL;
       
     } catch (err) {
-      setError(`Sistem Hatası: ${err.message}`);
+      setError(`Hata: ${err.message}`);
       setSubmitLoading(false);
     }
   };
@@ -202,7 +192,7 @@ function App() {
           <form onSubmit={(e)=>{e.preventDefault(); setCurrentStep('quiz-select')}} className="space-y-4 text-left">
             <input type="text" placeholder="Adınız" value={user.name} onChange={(e)=>setUser({...user, name: e.target.value})} className="w-full px-6 py-4 rounded-2xl border bg-slate-50 outline-none focus:ring-2 focus:ring-orange-500 text-lg font-medium" required />
             <input type="text" placeholder="Soyadınız" value={user.surname} onChange={(e)=>setUser({...user, surname: e.target.value})} className="w-full px-6 py-4 rounded-2xl border bg-slate-50 outline-none focus:ring-2 focus:ring-orange-500 text-lg font-medium" required />
-            <input type="text" placeholder="Sektörünüz (Örn: Kuaför, Mobilya)" value={user.sector} onChange={(e)=>setUser({...user, sector: e.target.value})} className="w-full px-6 py-4 rounded-2xl border bg-slate-50 outline-none focus:ring-2 focus:ring-orange-500 text-lg font-medium" required />
+            <input type="text" placeholder="Sektörünüz (Örn: Kuaför)" value={user.sector} onChange={(e)=>setUser({...user, sector: e.target.value})} className="w-full px-6 py-4 rounded-2xl border bg-slate-50 outline-none focus:ring-2 focus:ring-orange-500 text-lg font-medium" required />
             <input type="email" placeholder="E-posta Adresiniz" value={user.email} onChange={(e)=>setUser({...user, email: e.target.value})} className="w-full px-6 py-4 rounded-2xl border bg-slate-50 outline-none focus:ring-2 focus:ring-orange-500 text-lg font-medium" required />
             <button type="submit" className="w-full bg-orange-500 text-white font-black py-6 rounded-2xl shadow-xl uppercase tracking-widest hover:-translate-y-1 transition-transform">TESTİ BAŞLAT</button>
           </form>
@@ -214,7 +204,7 @@ function App() {
             {[1, 2, 3, 4, 5].map(num => (
               <label key={num} className={`flex items-center p-5 rounded-2xl border-2 cursor-pointer transition text-left ${selectedSections.includes(num) ? 'bg-orange-50 border-orange-500' : 'bg-slate-50 border-transparent hover:border-orange-200'}`}>
                 <input type="checkbox" checked={selectedSections.includes(num)} onChange={() => setSelectedSections(prev => prev.includes(num) ? prev.filter(s => s !== num) : [...prev, num].sort())} className="hidden" />
-                <span className={`text-lg font-bold ${selectedSections.includes(num) ? 'text-orange-600' : 'text-slate-500'}`}>{getSectionTitle(num)}</span>
+                <span className={`text-lg font-bold ${selectedSections.includes(num) ? 'text-orange-600' : 'text-slate-500'}`}>{num === 1 ? 'Sosyal Medya' : num === 2 ? 'Yerel SEO' : num === 3 ? 'Reklam & Kampanya' : num === 4 ? 'İçerik Pazarlaması' : num === 5 ? 'Otomasyon' : ''}</span>
               </label>
             ))}
             <button onClick={() => selectedSections.length > 0 ? setCurrentStep('quiz') : setError('Lütfen alan seçin.')} className="w-full bg-orange-500 text-white font-black py-5 rounded-2xl mt-6 uppercase tracking-widest shadow-md">Sorulara Geç</button>
@@ -225,8 +215,7 @@ function App() {
           <div className="space-y-8 text-left">
             {selectedSections.map(sNum => (
               <div key={sNum} className="space-y-4">
-                {/* DÜZELTİLEN YER: sNum mühürlendi */}
-                <h3 className="text-lg font-black text-slate-800 border-b-2 border-orange-100 pb-2 uppercase italic">{getSectionTitle(sNum)}</h3>
+                <h3 className="text-lg font-black text-slate-800 border-b-2 border-orange-100 pb-2 uppercase italic">{sNum === 1 ? 'Sosyal Medya' : sNum === 2 ? 'Yerel SEO' : sNum === 3 ? 'Reklam & Kampanya' : sNum === 4 ? 'İçerik Pazarlaması' : sNum === 5 ? 'Otomasyon' : ''}</h3>
                 {allQuestions.filter(q => q.section === sNum).map((q, idx) => (
                   <div key={q.id} className="bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-sm">
                     <p className="font-bold text-slate-800 mb-4 text-sm">{idx + 1}. {q.text}</p>
@@ -245,24 +234,44 @@ function App() {
 
         {currentStep === 'whatsapp-funnel' && (
           <div className="space-y-6 animate-in fade-in zoom-in duration-500 text-center">
-            <div className="bg-red-600 text-white p-8 rounded-[2rem] shadow-2xl border-4 border-red-700">
-                <h2 className="text-2xl md:text-3xl font-black mb-4 italic uppercase">🚨 DİJİTAL SAĞLIK PUANINIZ: {normalizedScore} / 100</h2>
-                <div className="bg-red-800/60 p-4 rounded-xl border border-red-500/50">
-                    <p className="text-red-50 font-bold text-sm italic leading-snug">⚠️ Durum: İşletmenizin dijital varlıklarında acil müdahale gerektiren sızıntılar tespit edildi!</p>
-                </div>
+            <div className="bg-slate-900 text-white p-8 rounded-[2rem] shadow-2xl border-4 border-orange-500">
+                <h2 className="text-2xl md:text-3xl font-black mb-2 italic uppercase">Analiziniz Hazır! 🚀</h2>
+                <p className="text-orange-100 font-bold text-lg italic">Dijital Sağlık Puanınız: {normalizedScore} / 100</p>
             </div>
 
             <div className="bg-white p-6 md:p-8 rounded-[2rem] border-2 border-orange-200 shadow-xl text-left">
-                <h3 className="text-xl font-black text-slate-900 mb-6 border-b-2 border-orange-100 pb-3 italic">Sırada Ne Var? 👇</h3>
+                <h3 className="text-xl font-black text-slate-900 mb-6 border-b-2 border-orange-100 pb-3 italic">Raporunuzu Nasıl Alacaksınız? 👇</h3>
                 <ul className="space-y-6 text-sm font-medium">
-                    <li className="flex gap-3">📧 <span><strong>1. Ön Analiz Raporunuz:</strong> Yapay zeka dökümünüz <strong>{user.email}</strong> adresine iletilecektir.</span></li>
-                    <li className="flex gap-3">📲 <span><strong>2. Uzman Randevusu:</strong> Büyüme uzmanımız size özel yol haritasıyla <strong>WhatsApp</strong> üzerinden ulaşacaktır.</span></li>
+                    <li className="flex gap-3">📧 <span><strong>1. E-posta Gönderiliyor:</strong> Hazırlanan dijital röntgen raporunuz an itibariyle <strong>{user.email}</strong> adresine iletilmektedir.</span></li>
+                    <li className="flex gap-3 text-orange-600">📲 <span><strong>2. WhatsApp İletişim Garantisi:</strong> Mail servislerindeki gecikme veya spama düşme riskine karşı, raporunuzun bir kopyası <strong>WhatsApp</strong> üzerinden yedek kanal olarak size ulaştırılacaktır.</span></li>
                 </ul>
             </div>
 
-            <form onSubmit={finalSubmit} className="space-y-4 text-left mt-6">
-                <input type="tel" placeholder="WhatsApp Numaranız (Örn: 0532...)" value={user.whatsapp} onChange={(e)=>setUser({...user, whatsapp: e.target.value})} disabled={submitLoading} className="w-full px-8 py-6 rounded-[1.5rem] border-2 border-slate-200 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 outline-none text-xl font-black shadow-inner disabled:opacity-50" required />
-                <button type="submit" disabled={submitLoading} className={`w-full flex items-center justify-center gap-3 text-white font-black py-6 rounded-2xl shadow-2xl uppercase tracking-widest transition-all ${submitLoading ? 'bg-slate-700' : 'bg-orange-600 hover:bg-orange-700 transform hover:scale-[1.02] active:scale-95'}`}>
+            <div className="mt-8 text-left">
+                <label className="block text-slate-700 font-black uppercase text-xs mb-2 ml-4 italic tracking-widest">
+                    WhatsApp Numaranızı Buraya Yazın:
+                </label>
+                <div className={`relative transition-all duration-300 ${inputError ? 'animate-bounce' : ''}`}>
+                    <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                        <svg className="h-6 w-6 text-emerald-500" fill="currentColor" viewBox="0 0 448 512">
+                            <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.1 0-65.6-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-5.5-2.8-23.4-8.6-44.6-27.4-16.5-14.7-27.6-32.8-30.8-38.4-3.2-5.6-.3-8.6 2.5-11.4 2.5-2.5 5.5-6.5 8.3-9.7 2.8-3.2 3.7-5.6 5.6-9.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 13.2 5.8 23.5 9.2 31.6 11.8 13.3 4.2 25.4 3.6 35 2.2 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/>
+                        </svg>
+                    </div>
+                    <input 
+                        type="tel" 
+                        placeholder="05xx xxx xx xx" 
+                        value={user.whatsapp} 
+                        onChange={(e)=>setUser({...user, whatsapp: e.target.value})} 
+                        disabled={submitLoading} 
+                        className={`w-full pl-14 pr-8 py-6 rounded-[1.5rem] border-4 transition-all outline-none text-2xl font-black shadow-lg ${inputError ? 'border-red-500' : 'border-slate-100 focus:border-orange-500'}`} 
+                        required 
+                    />
+                </div>
+                <p className="text-[10px] text-slate-400 text-center italic mt-3 font-bold">* Numaranız sadece raporu güvenli bir şekilde ulaştırmak için kullanılacaktır.</p>
+            </div>
+
+            <form onSubmit={finalSubmit} className="mt-8">
+                <button type="submit" disabled={submitLoading} className={`w-full flex items-center justify-center gap-3 text-white font-black py-7 rounded-[1.75rem] shadow-2xl uppercase tracking-widest transition-all text-lg ${submitLoading ? 'bg-slate-700' : 'bg-orange-600 hover:bg-orange-700 transform hover:scale-[1.02] active:scale-95'}`}>
                     {loadingText}
                 </button>
             </form>
