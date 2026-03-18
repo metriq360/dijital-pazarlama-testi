@@ -293,9 +293,13 @@ function App() {
 
         {currentStep === 'whatsapp-funnel' && (
           <div className="space-y-6 animate-in fade-in zoom-in duration-500 text-center">
-            <div className="bg-slate-900 text-white p-8 rounded-[2rem] shadow-2xl border-4 border-orange-500">
-                <h2 className="text-2xl md:text-3xl font-black mb-2 italic uppercase">Analiziniz Hazır! 🚀</h2>
-                <p className="text-orange-100 font-bold text-lg italic">Dijital Sağlık Puanınız: {normalizedScore} / 100</p>
+            <div className="bg-slate-900 p-8 md:p-10 rounded-[2rem] shadow-2xl border-4 border-orange-500">
+                <h2 className="text-3xl md:text-4xl font-black text-white mb-4 italic uppercase tracking-tight">Analiziniz Hazır! 🚀</h2>
+                <div className="bg-slate-800/80 inline-block px-6 py-4 rounded-2xl border border-slate-700 shadow-inner">
+                    <p className="text-orange-400 font-black text-xl md:text-2xl">
+                        Dijital Sağlık Puanınız: <span className="text-white text-3xl md:text-4xl ml-2">{normalizedScore} / 100</span>
+                    </p>
+                </div>
             </div>
 
             <div className="bg-white p-6 md:p-8 rounded-[2rem] border-2 border-orange-200 shadow-xl text-left">
@@ -342,7 +346,7 @@ function App() {
                     * Numaranız sadece raporu güvenli bir şekilde ulaştırmak için kullanılacaktır.
                 </p>
 
-                <button type="submit" disabled={submitLoading} className={`mt-8 w-full flex items-center justify-center gap-3 text-white font-black py-7 rounded-[1.75rem] shadow-2xl uppercase tracking-widest transition-all text-lg ${submitLoading ? 'bg-slate-700' : 'bg-orange-600 hover:bg-orange-700 transform hover:scale-[1.02] active:scale-95'}`}>
+                <button type="submit" disabled={submitLoading} className={`mt-8 w-full flex items-center justify-center gap-3 text-white font-black py-7 rounded-[1.75rem] shadow-2xl uppercase tracking-widest transition-all text-lg md:text-xl ${submitLoading ? 'bg-slate-700' : 'bg-orange-600 hover:bg-orange-700 transform hover:scale-[1.02] active:scale-95'}`}>
                     ANALİZİ TAMAMLA VE RAPORU AL
                 </button>
                 
@@ -350,7 +354,7 @@ function App() {
                     type="button" 
                     disabled={submitLoading} 
                     onClick={(e) => { e.preventDefault(); submitData(true); }}
-                    className="mt-6 w-full text-slate-400 hover:text-slate-600 font-bold text-sm uppercase tracking-widest transition-colors underline decoration-dotted underline-offset-4"
+                    className="mt-4 w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-5 rounded-[1.5rem] text-sm md:text-base uppercase tracking-widest transition-all border-2 border-slate-200 shadow-sm"
                 >
                     Numara Vermeden Devam Et
                 </button>
