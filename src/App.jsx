@@ -60,12 +60,12 @@ const allQuestions = [
 ];
 
 export default function App() {
-  const [db, setDb] = useState<any>(null);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [db, setDb] = useState(null);
+  const [userId, setUserId] = useState(null);
   const [user, setUser] = useState({ name: '', surname: '', sector: '', email: '', whatsapp: '' });
   const [currentStep, setCurrentStep] = useState('form');
-  const [selectedSections, setSelectedSections] = useState<number[]>([]);
-  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [selectedSections, setSelectedSections] = useState([]);
+  const [answers, setAnswers] = useState({});
   const [normalizedScore, setNormalizedScore] = useState(0);
   const [loading, setLoading] = useState(false); // Set to false since we don't have initial firebase config yet
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -77,9 +77,13 @@ export default function App() {
 
   useEffect(() => {
     document.title = "METRIQ360 | Dijital Sağlık Testi";
-    const link: any = document.querySelector("link[rel~='icon']") || document.createElement('link');
-    link.href = 'https://i.imgur.com/DMqrCwJ.png';
-    document.getElementsByTagName('head')[0].appendChild(link);
+    let link = document.querySelector("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement('link');
+      link.setAttribute('rel', 'icon');
+      document.getElementsByTagName('head')[0].appendChild(link);
+    }
+    link.setAttribute('href', 'https://i.imgur.com/DMqrCwJ.png');
   }, []);
 
   useEffect(() => {
@@ -104,7 +108,7 @@ export default function App() {
   }, [submitLoading]);
 
   const calculateScore = () => {
-    let total = 0; let max = 0; const sScores: any = {}; const sMax: any = {};
+    let total = 0; let max = 0; const sScores = {}; const sMax = {};
     selectedSections.forEach(num => {
       let current = 0; const qs = allQuestions.filter(q => q.section === num);
       qs.forEach(q => current += (answers[q.id] || 0));
@@ -114,7 +118,7 @@ export default function App() {
     return { norm: max > 0 ? Math.round((total / max) * 100) : 0, sScores, sMax };
   };
 
-  const finalSubmit = async (e?: React.FormEvent) => {
+  const finalSubmit = async (e = null) => {
     if (e) e.preventDefault();
     if (!skipWhatsapp && (!user.whatsapp || user.whatsapp.length < 10)) { 
         setError("Lütfen geçerli bir WhatsApp numarası girin veya numara vermeden devam etme seçeneğini işaretleyin."); 
@@ -151,7 +155,7 @@ export default function App() {
 
       window.location.href = THANK_YOU_PAGE_URL;
       
-    } catch (err: any) {
+    } catch (err) {
       setError(`Hata: ${err.message}`);
       setSubmitLoading(false);
     }
