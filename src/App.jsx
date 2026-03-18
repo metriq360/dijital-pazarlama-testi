@@ -3,10 +3,13 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc } from 'firebase/firestore';
 
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+const appId = typeof __app_id !== 'undefined' ? String(__app_id) : 'default-app-id';
+const safeAppId = appId.replace(/\//g, '_'); // Firebase yolunda soruna yol açan eğik çizgileri engellemek için
+
 const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
+// --- MÜHÜRLÜ TEŞEKKÜRLER SAYFASI LİNKİ ---
 const THANK_YOU_PAGE_URL = "https://www.metriq360.tr/saglik-testi-tesekkur"; 
 
 const allQuestions = [
@@ -75,6 +78,7 @@ function App() {
   const [loadingText, setLoadingText] = useState('ANALİZİ TAMAMLA VE RAPORU AL');
   const [error, setError] = useState('');
   const [inputError, setInputError] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
 
   useEffect(() => {
     const branding = () => {
@@ -93,16 +97,21 @@ function App() {
         const auth = getAuth(app);
         const dbInstance = getFirestore(app);
         setDb(dbInstance);
-        const doAuth = async () => {
+
+        const initAuth = async () => {
           if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
           else await signInAnonymously(auth);
         };
-        await doAuth();
+        await initAuth();
+        
         onAuthStateChanged(auth, (fbUser) => {
           if (fbUser) setUserId(fbUser.uid);
           setLoading(false);
         });
-      } catch (e) { setLoading(false); }
+      } catch (e) { 
+        console.error("Firebase Init Error:", e);
+        setLoading(false); 
+      }
     };
     initFirebase();
   }, []);
@@ -110,70 +119,112 @@ function App() {
   useEffect(() => {
     let interval;
     if (submitLoading) {
-      const steps = ["Raporunuz Hazırlanıyor 🧠", "Veriler Şifreleniyor 🔒", "E-posta Gönderiliyor 📧", "Yönlendiriliyorsunuz 🚀"];
+      const steps = [
+        "Yapay Zeka Raporunuz Hazırlanıyor 🧠", 
+        "Verileriniz Şifreleniyor 🔒", 
+        "E-postanıza Gönderiliyor 📧", 
+        "Şimdi Teşekkür Sayfasına Yönlendiriliyorsunuz... 🚀"
+      ];
       let idx = 0; setLoadingText(steps[0]);
-      interval = setInterval(() => { idx++; if (idx < steps.length) setLoadingText(steps[idx]); }, 1000);
+      interval = setInterval(() => { idx++; if (idx < steps.length) setLoadingText(steps[idx]); }, 1500);
     } else { setLoadingText('ANALİZİ TAMAMLA VE RAPORU AL'); }
     return () => clearInterval(interval);
   }, [submitLoading]);
+
+  const getSectionTitle = (num) => {
+    const titles = ['', 'Sosyal Medya', 'Yerel SEO', 'Reklam & Kampanya', 'İçerik Pazarlaması', 'Otomasyon'];
+    return titles[num] || '';
+  };
 
   const calculateScore = () => {
     let total = 0; let max = 0; const sScores = {}; const sMax = {};
     selectedSections.forEach(num => {
       let current = 0; const qs = allQuestions.filter(q => q.section === num);
-      qs.forEach(q => current += (answers[q.id] || 0));
+      qs.forEach(q => { current += (answers[q.id] || 0); });
       sScores[num] = current; sMax[num] = qs.length * 5;
       total += current; max += qs.length * 5;
     });
     return { norm: max > 0 ? Math.round((total / max) * 100) : 0, sScores, sMax };
   };
 
-  const finalSubmit = async (e) => {
-    e.preventDefault();
-    if (!user.whatsapp || user.whatsapp.length < 10) { 
-        setError("Lütfen geçerli bir WhatsApp numarası girin."); 
-        setInputError(true);
-        setTimeout(() => setInputError(false), 1000);
-        return; 
+  const submitData = async (skipWhatsapp = false) => {
+    setError(''); 
+    
+    if (!skipWhatsapp) {
+        const cleanNumber = user.whatsapp ? user.whatsapp.replace(/\D/g, '') : '';
+        if (cleanNumber.length < 10) {
+            setError("Lütfen geçerli bir WhatsApp numarası girin."); 
+            setInputError(true);
+            setTimeout(() => setInputError(false), 1000); 
+            return; 
+        }
     }
+    
     setSubmitLoading(true);
+    setShowPopup(true); 
+    
     const result = calculateScore();
+    const finalWhatsapp = skipWhatsapp ? "Paylaşılmadı" : user.whatsapp;
 
     try {
       const baseUrl = window.location.origin === 'null' ? '' : window.location.origin;
       let reportText = "Analiz uzmanımız tarafından hazırlanacaktır.";
+      
       try {
         const res = await fetch(`${baseUrl}/.netlify/functions/generate-report`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userInfo: user, totalScore: result.norm, answers, allQuestions, selectedSections }),
         });
-        if (res.ok) { const data = await res.json(); reportText = data.detailedReport; }
-      } catch(e) {}
+        if (res.ok) { 
+          const data = await res.json(); 
+          reportText = data.detailedReport; 
+        }
+      } catch(e) {
+        console.error("Report Generation Error:", e);
+      }
 
       await fetch(`${baseUrl}/.netlify/functions/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userInfo: user, report: reportText, scores: { totalScore: result.norm, sectionScores: result.sScores, sectionMaxScores: result.sMax }, answers, selectedSections }),
+        body: JSON.stringify({ 
+            userInfo: { ...user, whatsapp: finalWhatsapp }, 
+            report: reportText, 
+            scores: { totalScore: result.norm, sectionScores: result.sScores, sectionMaxScores: result.sMax }, 
+            answers, 
+            selectedSections 
+        }),
       });
 
       if (db && userId) {
         try {
-          await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'leads'), {
-            timestamp: new Date(), ...user, score: result.norm, answers, report: reportText
+          await addDoc(collection(db, 'artifacts', safeAppId, 'users', userId, 'leads'), {
+            timestamp: new Date(), 
+            ...user, 
+            whatsapp: finalWhatsapp, 
+            score: result.norm, 
+            answers, 
+            report: reportText
           });
-        } catch (fbErr) {}
+        } catch (fbErr) { 
+          console.error("Database Save Error:", fbErr); 
+        }
       }
 
       window.location.href = THANK_YOU_PAGE_URL;
       
     } catch (err) {
-      setError(`Hata: ${err.message}`);
+      setError(`Sistem Hatası: ${err.message}`);
       setSubmitLoading(false);
+      setShowPopup(false);
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-orange-500 font-black animate-pulse uppercase italic text-xl">Metriq360 Yükleniyor...</div>;
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center text-orange-500 font-black animate-pulse uppercase italic text-xl text-center p-10">
+      Metriq360 Yükleniyor...
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-orange-50 flex flex-col items-center justify-center p-4 font-sans text-slate-900">
@@ -186,13 +237,17 @@ function App() {
             </div>
         )}
 
-        {error && <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6 font-bold text-sm border-l-4 border-red-500 text-left shadow-sm">🚨 {error}</div>}
+        {error && (
+          <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6 font-bold text-sm border-l-4 border-red-500 text-left shadow-sm">
+            🚨 {error}
+          </div>
+        )}
 
         {currentStep === 'form' && (
           <form onSubmit={(e)=>{e.preventDefault(); setCurrentStep('quiz-select')}} className="space-y-4 text-left">
             <input type="text" placeholder="Adınız" value={user.name} onChange={(e)=>setUser({...user, name: e.target.value})} className="w-full px-6 py-4 rounded-2xl border bg-slate-50 outline-none focus:ring-2 focus:ring-orange-500 text-lg font-medium" required />
             <input type="text" placeholder="Soyadınız" value={user.surname} onChange={(e)=>setUser({...user, surname: e.target.value})} className="w-full px-6 py-4 rounded-2xl border bg-slate-50 outline-none focus:ring-2 focus:ring-orange-500 text-lg font-medium" required />
-            <input type="text" placeholder="Sektörünüz (Örn: Kuaför)" value={user.sector} onChange={(e)=>setUser({...user, sector: e.target.value})} className="w-full px-6 py-4 rounded-2xl border bg-slate-50 outline-none focus:ring-2 focus:ring-orange-500 text-lg font-medium" required />
+            <input type="text" placeholder="Sektörünüz (Örn: Mobilya)" value={user.sector} onChange={(e)=>setUser({...user, sector: e.target.value})} className="w-full px-6 py-4 rounded-2xl border bg-slate-50 outline-none focus:ring-2 focus:ring-orange-500 text-lg font-medium" required />
             <input type="email" placeholder="E-posta Adresiniz" value={user.email} onChange={(e)=>setUser({...user, email: e.target.value})} className="w-full px-6 py-4 rounded-2xl border bg-slate-50 outline-none focus:ring-2 focus:ring-orange-500 text-lg font-medium" required />
             <button type="submit" className="w-full bg-orange-500 text-white font-black py-6 rounded-2xl shadow-xl uppercase tracking-widest hover:-translate-y-1 transition-transform">TESTİ BAŞLAT</button>
           </form>
@@ -204,10 +259,12 @@ function App() {
             {[1, 2, 3, 4, 5].map(num => (
               <label key={num} className={`flex items-center p-5 rounded-2xl border-2 cursor-pointer transition text-left ${selectedSections.includes(num) ? 'bg-orange-50 border-orange-500' : 'bg-slate-50 border-transparent hover:border-orange-200'}`}>
                 <input type="checkbox" checked={selectedSections.includes(num)} onChange={() => setSelectedSections(prev => prev.includes(num) ? prev.filter(s => s !== num) : [...prev, num].sort())} className="hidden" />
-                <span className={`text-lg font-bold ${selectedSections.includes(num) ? 'text-orange-600' : 'text-slate-500'}`}>{num === 1 ? 'Sosyal Medya' : num === 2 ? 'Yerel SEO' : num === 3 ? 'Reklam & Kampanya' : num === 4 ? 'İçerik Pazarlaması' : num === 5 ? 'Otomasyon' : ''}</span>
+                <span className={`text-lg font-bold ${selectedSections.includes(num) ? 'text-orange-600' : 'text-slate-500'}`}>
+                  {getSectionTitle(num)}
+                </span>
               </label>
             ))}
-            <button onClick={() => selectedSections.length > 0 ? setCurrentStep('quiz') : setError('Lütfen alan seçin.')} className="w-full bg-orange-500 text-white font-black py-5 rounded-2xl mt-6 uppercase tracking-widest shadow-md">Sorulara Geç</button>
+            <button onClick={() => selectedSections.length > 0 ? setCurrentStep('quiz') : setError('Lütfen en az bir alan seçin.')} className="w-full bg-orange-500 text-white font-black py-5 rounded-2xl mt-6 uppercase tracking-widest shadow-md">Sorulara Geç</button>
           </div>
         )}
 
@@ -215,7 +272,9 @@ function App() {
           <div className="space-y-8 text-left">
             {selectedSections.map(sNum => (
               <div key={sNum} className="space-y-4">
-                <h3 className="text-lg font-black text-slate-800 border-b-2 border-orange-100 pb-2 uppercase italic">{sNum === 1 ? 'Sosyal Medya' : sNum === 2 ? 'Yerel SEO' : sNum === 3 ? 'Reklam & Kampanya' : sNum === 4 ? 'İçerik Pazarlaması' : sNum === 5 ? 'Otomasyon' : ''}</h3>
+                <h3 className="text-lg font-black text-slate-800 border-b-2 border-orange-100 pb-2 uppercase italic">
+                  {getSectionTitle(sNum)}
+                </h3>
                 {allQuestions.filter(q => q.section === sNum).map((q, idx) => (
                   <div key={q.id} className="bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-sm">
                     <p className="font-bold text-slate-800 mb-4 text-sm">{idx + 1}. {q.text}</p>
@@ -243,14 +302,27 @@ function App() {
                 <h3 className="text-xl font-black text-slate-900 mb-6 border-b-2 border-orange-100 pb-3 italic">Raporunuzu Nasıl Alacaksınız? 👇</h3>
                 <ul className="space-y-6 text-sm font-medium">
                     <li className="flex gap-3">📧 <span><strong>1. E-posta Gönderiliyor:</strong> Hazırlanan dijital röntgen raporunuz an itibariyle <strong>{user.email}</strong> adresine iletilmektedir.</span></li>
-                    <li className="flex gap-3 text-orange-600">📲 <span><strong>2. WhatsApp İletişim Garantisi:</strong> Mail servislerindeki gecikme veya spama düşme riskine karşı, raporunuzun bir kopyası <strong>WhatsApp</strong> üzerinden yedek kanal olarak size ulaştırılacaktır.</span></li>
+                    <li className="flex gap-3 text-orange-600">📲 <span><strong>2. WhatsApp İletişim Garantisi:</strong> Mail servislerindeki gecikme riskine karşı, raporunuzun bir kopyası <strong>WhatsApp</strong> üzerinden yedek kanal olarak ulaştırılacaktır.</span></li>
                 </ul>
             </div>
 
-            <div className="mt-8 text-left">
+            <div className="bg-emerald-600 text-white rounded-[1.5rem] p-5 flex items-center gap-4 mt-8 shadow-md text-left">
+                <div className="flex-shrink-0 bg-emerald-500/50 p-3 rounded-full">
+                    <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 512 512">
+                        <path d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2c-.5 99.2-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h4 className="font-black italic text-[17px] uppercase tracking-wide leading-tight">%100 GÜVENLİK GARANTİSİ</h4>
+                    <p className="text-emerald-50 text-[12px] font-medium mt-1 leading-snug">Numaranız asla reklam için kullanılmaz. Sadece rapor iletimi için kaydedilir.</p>
+                </div>
+            </div>
+
+            <form onSubmit={(e) => { e.preventDefault(); submitData(false); }} className="mt-8 text-left">
                 <label className="block text-slate-700 font-black uppercase text-xs mb-2 ml-4 italic tracking-widest">
                     WhatsApp Numaranızı Buraya Yazın:
                 </label>
+                
                 <div className={`relative transition-all duration-300 ${inputError ? 'animate-bounce' : ''}`}>
                     <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                         <svg className="h-6 w-6 text-emerald-500" fill="currentColor" viewBox="0 0 448 512">
@@ -259,25 +331,69 @@ function App() {
                     </div>
                     <input 
                         type="tel" 
-                        placeholder="05xx xxx xx xx" 
+                        placeholder="05xx xxx xx xx"
                         value={user.whatsapp} 
                         onChange={(e)=>setUser({...user, whatsapp: e.target.value})} 
                         disabled={submitLoading} 
                         className={`w-full pl-14 pr-8 py-6 rounded-[1.5rem] border-4 transition-all outline-none text-2xl font-black shadow-lg ${inputError ? 'border-red-500' : 'border-slate-100 focus:border-orange-500'}`} 
-                        required 
                     />
                 </div>
-                <p className="text-[10px] text-slate-400 text-center italic mt-3 font-bold">* Numaranız sadece raporu güvenli bir şekilde ulaştırmak için kullanılacaktır.</p>
-            </div>
+                <p className="text-[10px] text-slate-400 text-center italic mt-3 font-bold">
+                    * Numaranız sadece raporu güvenli bir şekilde ulaştırmak için kullanılacaktır.
+                </p>
 
-            <form onSubmit={finalSubmit} className="mt-8">
-                <button type="submit" disabled={submitLoading} className={`w-full flex items-center justify-center gap-3 text-white font-black py-7 rounded-[1.75rem] shadow-2xl uppercase tracking-widest transition-all text-lg ${submitLoading ? 'bg-slate-700' : 'bg-orange-600 hover:bg-orange-700 transform hover:scale-[1.02] active:scale-95'}`}>
-                    {loadingText}
+                <button type="submit" disabled={submitLoading} className={`mt-8 w-full flex items-center justify-center gap-3 text-white font-black py-7 rounded-[1.75rem] shadow-2xl uppercase tracking-widest transition-all text-lg ${submitLoading ? 'bg-slate-700' : 'bg-orange-600 hover:bg-orange-700 transform hover:scale-[1.02] active:scale-95'}`}>
+                    ANALİZİ TAMAMLA VE RAPORU AL
+                </button>
+                
+                <button 
+                    type="button" 
+                    disabled={submitLoading} 
+                    onClick={(e) => { e.preventDefault(); submitData(true); }}
+                    className="mt-6 w-full text-slate-400 hover:text-slate-600 font-bold text-sm uppercase tracking-widest transition-colors underline decoration-dotted underline-offset-4"
+                >
+                    Numara Vermeden Devam Et
                 </button>
             </form>
           </div>
         )}
       </div>
+
+      {showPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2rem] p-8 max-w-md w-full shadow-2xl border-4 border-orange-500 text-center animate-in zoom-in-95 duration-500 relative overflow-hidden">
+            
+            <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce shadow-inner">
+              <span className="text-4xl">🚀</span>
+            </div>
+
+            <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-6 italic uppercase tracking-tight">İşleminiz Yapılıyor...</h2>
+
+            <div className="bg-orange-50 text-orange-600 font-black p-5 rounded-2xl mb-6 shadow-sm transition-all duration-500 text-base border border-orange-100">
+              {loadingText}
+            </div>
+
+            <div className="bg-red-50 border border-red-100 p-5 rounded-2xl mb-6">
+              <div className="flex items-center justify-center gap-2 text-red-600 font-black mb-2 text-sm uppercase tracking-widest">
+                <span>⚠️</span> KRİTİK UYARI
+              </div>
+              <p className="text-red-900/80 text-xs font-bold leading-relaxed text-center">
+                Lütfen bu sayfadan ayrılmayın ve tarayıcınızı kapatmayın. Yönlendirme otomatik olarak gerçekleşecektir. Ayrılmanız durumunda verileriniz kaybolabilir.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+              </span>
+              GÜVENLİ BAĞLANTI AKTİF
+            </div>
+            
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
