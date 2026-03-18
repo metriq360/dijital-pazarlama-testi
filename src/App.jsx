@@ -237,14 +237,18 @@ export default function App() {
 
             <div className="bg-white p-4 md:p-8 rounded-xl md:rounded-[2.5rem] border-2 border-orange-50 shadow-xl text-left">
                 <h3 className="text-sm md:text-xl font-black text-slate-900 mb-3 md:mb-6 border-b-2 border-orange-50 pb-2 italic">Raporunuzu Nasıl Alacaksınız? 👇</h3>
-                <ul className="space-y-3 md:space-y-6 text-[10px] md:text-sm font-medium">
+                <ul className="space-y-4 md:space-y-6 text-[10px] md:text-sm font-medium">
                     <li className="flex gap-3 items-start">
-                        <div className="bg-orange-50 p-1.5 rounded-lg text-lg shrink-0">📧</div>
-                        <span className="leading-tight"><strong>1. E-posta:</strong> Raporunuz <strong>{user.email}</strong> adresine iletilmektedir.</span>
+                        <div className="w-10 h-10 flex items-center justify-center bg-orange-100 border-2 border-orange-200 rounded-xl text-xl shrink-0 shadow-sm">
+                            📧
+                        </div>
+                        <span className="leading-tight pt-1.5"><strong>1. E-posta:</strong> Raporunuz <strong>{user.email}</strong> adresine iletilmektedir.</span>
                     </li>
                     <li className="flex gap-3 items-start text-orange-600">
-                        <div className="bg-orange-500 text-white p-1.5 rounded-lg shadow-md text-lg shrink-0">📲</div>
-                        <span className="leading-tight"><strong>2. WhatsApp:</strong> Mail gecikme riskine karşı, raporunuz <strong>WhatsApp</strong> üzerinden de ulaştırılacaktır.</span>
+                        <div className="w-10 h-10 flex items-center justify-center bg-orange-500 text-white rounded-xl shadow-md text-xl shrink-0">
+                            📲
+                        </div>
+                        <span className="leading-tight pt-1.5"><strong>2. WhatsApp:</strong> Mail gecikme riskine karşı, raporunuz <strong>WhatsApp</strong> üzerinden de ulaştırılacaktır.</span>
                     </li>
                 </ul>
             </div>
